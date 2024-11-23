@@ -42,9 +42,6 @@ var fs = require("fs/promises");
 var VaultCLI = /** @class */ (function () {
     function VaultCLI() {
     }
-    /**
-     * Prompts for password securely
-     */
     VaultCLI.getPassword = function () {
         return __awaiter(this, arguments, void 0, function (confirm) {
             var stdin, stdout, question, password, confirmPassword;
@@ -54,39 +51,40 @@ var VaultCLI = /** @class */ (function () {
                     case 0:
                         stdin = process.stdin;
                         stdout = process.stdout;
-                        // Configure terminal
-                        stdin.setRawMode(true);
-                        stdin.resume();
-                        stdin.setEncoding('utf8');
                         question = function (prompt) {
                             return new Promise(function (resolve) {
                                 var password = '';
                                 stdout.write(prompt);
-                                stdin.on('data', function listener(char) {
+                                stdin.setRawMode(true);
+                                stdin.resume();
+                                stdin.setEncoding('utf8');
+                                var onData = function (char) {
                                     if (char === '\u0003') {
+                                        // Ctrl+C
                                         stdout.write('\n');
                                         process.exit(1);
                                     }
-                                    if (char === '\b' || char === '\x7f') {
+                                    else if (char === '\b' || char === '\x7f') {
+                                        // Backspace Key
                                         if (password.length > 0) {
                                             password = password.slice(0, -1);
                                             stdout.write('\b \b');
                                         }
-                                        return;
                                     }
-                                    // Handle enter
-                                    if (char === '\r' || char === '\n') {
+                                    else if (char === '\r' || char === '\n') {
+                                        // Enter Key
                                         stdout.write('\n');
-                                        stdin.removeListener('data', listener);
                                         stdin.setRawMode(false);
                                         stdin.pause();
+                                        stdin.removeListener('data', onData);
                                         resolve(password);
-                                        return;
                                     }
-                                    // Add char to password
-                                    password += char;
-                                    stdout.write('*');
-                                });
+                                    else {
+                                        password += char;
+                                        stdout.write('*');
+                                    }
+                                };
+                                stdin.on('data', onData);
                             });
                         };
                         return [4 /*yield*/, question('New Vault password: ')];
@@ -148,12 +146,11 @@ var VaultCLI = /** @class */ (function () {
                             iv.toString('hex'),
                             encrypted,
                         ].join('\n');
-                        // Write back to file
+                        console.log('Writing encrypted content to file...');
                         return [4 /*yield*/, fs.writeFile(filename, output)];
                     case 4:
-                        // Write back to file
                         _a.sent();
-                        console.log('Encryption successful');
+                        console.log('Encryption successful. File updated.');
                         return [3 /*break*/, 6];
                     case 5:
                         error_1 = _a.sent();
@@ -176,7 +173,6 @@ var VaultCLI = /** @class */ (function () {
                     case 1:
                         encryptedData = _a.sent();
                         lines = encryptedData.split('\n');
-                        // Verify header
                         if (lines[0] !== this.HEADER.trim()) {
                             throw new Error('Invalid vault format');
                         }
@@ -192,10 +188,8 @@ var VaultCLI = /** @class */ (function () {
                         decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                         decrypted = decipher.update(encrypted, 'hex', 'utf8');
                         decrypted += decipher.final('utf8');
-                        // Write decrypted content back to file
                         return [4 /*yield*/, fs.writeFile(filename, decrypted)];
                     case 4:
-                        // Write decrypted content back to file
                         _a.sent();
                         console.log('Decryption successful');
                         return [3 /*break*/, 6];
@@ -220,7 +214,6 @@ var VaultCLI = /** @class */ (function () {
                     case 1:
                         encryptedData = _a.sent();
                         lines = encryptedData.split('\n');
-                        // Verify header
                         if (lines[0] !== this.HEADER.trim()) {
                             throw new Error('Invalid vault format');
                         }
@@ -236,7 +229,6 @@ var VaultCLI = /** @class */ (function () {
                         decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
                         decrypted = decipher.update(encrypted, 'hex', 'utf8');
                         decrypted += decipher.final('utf8');
-                        // Output decrypted content to console
                         console.log(decrypted);
                         return [3 /*break*/, 5];
                     case 4:
@@ -255,7 +247,7 @@ var VaultCLI = /** @class */ (function () {
     VaultCLI.SALT_SIZE = 32;
     VaultCLI.ITERATIONS = 10000;
     VaultCLI.KEY_LENGTH = 32;
-    VaultCLI.HEADER = '$VAULT;1.1;AES256\n';
+    VaultCLI.HEADER = '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
     return VaultCLI;
 }());
 function main() {

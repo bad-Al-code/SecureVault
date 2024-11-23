@@ -7,56 +7,49 @@ class VaultCLI {
     private static readonly SALT_SIZE = 32;
     private static readonly ITERATIONS = 10000;
     private static readonly KEY_LENGTH = 32;
-    private static readonly HEADER = '$VAULT;1.1;AES256\n';
+    private static readonly HEADER =
+        '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
 
-    /**
-     * Prompts for password securely
-     */
     private static async getPassword(
         confirm: boolean = false,
     ): Promise<string> {
         const stdin = process.stdin;
         const stdout = process.stdout;
 
-        // Configure terminal
-        stdin.setRawMode(true);
-        stdin.resume();
-        stdin.setEncoding('utf8');
-
         const question = (prompt: string): Promise<string> => {
             return new Promise((resolve) => {
                 let password = '';
 
                 stdout.write(prompt);
+                stdin.setRawMode(true);
+                stdin.resume();
+                stdin.setEncoding('utf8');
 
-                stdin.on('data', function listener(char: string) {
+                const onData = (char: string) => {
                     if (char === '\u0003') {
+                        // Ctrl+C
                         stdout.write('\n');
                         process.exit(1);
-                    }
-
-                    if (char === '\b' || char === '\x7f') {
+                    } else if (char === '\b' || char === '\x7f') {
+                        // Backspace Key
                         if (password.length > 0) {
                             password = password.slice(0, -1);
                             stdout.write('\b \b');
                         }
-                        return;
-                    }
-
-                    // Handle enter
-                    if (char === '\r' || char === '\n') {
+                    } else if (char === '\r' || char === '\n') {
+                        // Enter Key
                         stdout.write('\n');
-                        stdin.removeListener('data', listener);
                         stdin.setRawMode(false);
                         stdin.pause();
+                        stdin.removeListener('data', onData);
                         resolve(password);
-                        return;
+                    } else {
+                        password += char;
+                        stdout.write('*');
                     }
+                };
 
-                    // Add char to password
-                    password += char;
-                    stdout.write('*');
-                });
+                stdin.on('data', onData);
             });
         };
 
@@ -93,28 +86,21 @@ class VaultCLI {
             );
         });
     }
-
     static async encryptFile(filename: string): Promise<void> {
         try {
-            // Read the file
             const data = await fs.readFile(filename, 'utf8');
 
-            // Get password with confirmation
             const password = await this.getPassword(true);
 
-            // Generate salt and IV
             const salt = crypto.randomBytes(this.SALT_SIZE);
             const iv = crypto.randomBytes(16);
 
-            // Derive key
             const key = await this.deriveKey(password, salt);
 
-            // Create cipher and encrypt
             const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
             let encrypted = cipher.update(data, 'utf8', 'hex');
             encrypted += cipher.final('hex');
 
-            // Combine components
             const output = [
                 this.HEADER.trim(),
                 salt.toString('hex'),
@@ -122,9 +108,9 @@ class VaultCLI {
                 encrypted,
             ].join('\n');
 
-            // Write back to file
+            console.log('Writing encrypted content to file...');
             await fs.writeFile(filename, output);
-            console.log('Encryption successful');
+            console.log('Encryption successful. File updated.');
         } catch (error: any) {
             console.error('Encryption failed:', error.message);
             process.exit(1);
@@ -133,32 +119,24 @@ class VaultCLI {
 
     static async decryptFile(filename: string): Promise<void> {
         try {
-            // Read the encrypted file
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
 
-            // Verify header
             if (lines[0] !== this.HEADER.trim()) {
                 throw new Error('Invalid vault format');
             }
 
-            // Get password
             const password = await this.getPassword();
-
-            // Extract components
             const salt = Buffer.from(lines[1], 'hex');
             const iv = Buffer.from(lines[2], 'hex');
             const encrypted = lines[3];
 
-            // Derive key
             const key = await this.deriveKey(password, salt);
 
-            // Decrypt
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
 
-            // Write decrypted content back to file
             await fs.writeFile(filename, decrypted);
             console.log('Decryption successful');
         } catch (error: any) {
@@ -169,32 +147,25 @@ class VaultCLI {
 
     static async viewFile(filename: string): Promise<void> {
         try {
-            // Read the encrypted file
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
 
-            // Verify header
             if (lines[0] !== this.HEADER.trim()) {
                 throw new Error('Invalid vault format');
             }
 
-            // Get password
             const password = await this.getPassword();
 
-            // Extract components
             const salt = Buffer.from(lines[1], 'hex');
             const iv = Buffer.from(lines[2], 'hex');
             const encrypted = lines[3];
 
-            // Derive key
             const key = await this.deriveKey(password, salt);
 
-            // Decrypt
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
 
-            // Output decrypted content to console
             console.log(decrypted);
         } catch (error: any) {
             console.error('View failed:', error.message);
