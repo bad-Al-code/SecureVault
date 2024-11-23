@@ -14,3 +14,5 @@ export interface EncryptedData {
 export interface VaultOptions {
     config?: Partial<VaultConfig>;
 }
+
+export type VaultCommand = 'encrypt' | 'decrypt' | 'view';
