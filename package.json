@@ -1,17 +1,23 @@
 {
-  "name": "securevault",
-  "version": "1.0.0",
-  "description": "Create a similar vault like ansible-vault.",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^22.9.3",
-    "prettier": "^3.3.3",
-    "typescript": "^5.7.2"
-  }
+    "name": "vault",
+    "version": "1.0.0",
+    "description": "Create a similar vault like ansible-vault.",
+    "bin": {
+        "vault": "./main.js"
+    },
+    "scripts": {
+        "build": "tsc main.ts",
+        "package": "pkg . --targets node18-linux-x64,node18-win-x64,node18-macos-x64"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/node": "^22.9.3",
+        "prettier": "^3.3.3",
+        "typescript": "^5.7.2"
+    },
+    "dependencies": {
+        "pkg": "^5.8.1"
+    }
 }
