@@ -34,7 +34,7 @@ class LoadingIndicator {
     stop(finalMessage?: string): void {
         if (this.intervalId) {
             clearInterval(this.intervalId);
-            process.stdout.write(`\r\x1b[K]`);
+            process.stdout.write(`\r\x1b[K`);
 
             if (finalMessage) {
                 console.log(finalMessage);

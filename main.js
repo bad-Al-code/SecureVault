@@ -59,7 +59,7 @@ var LoadingIndicator = /** @class */ (function () {
     LoadingIndicator.prototype.stop = function (finalMessage) {
         if (this.intervalId) {
             clearInterval(this.intervalId);
-            process.stdout.write("\r\u001B[K]");
+            process.stdout.write("\r\u001B[K");
             if (finalMessage) {
                 console.log(finalMessage);
             }
