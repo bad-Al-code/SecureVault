@@ -6,6 +6,43 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 
+class LoadingIndicator {
+    private static spinnerFrames = [
+        '⠋',
+        '⠙',
+        '⠹',
+        '⠸',
+        '⠼',
+        '⠴',
+        '⠦',
+        '⠧',
+        '⠇',
+        '⠏',
+    ];
+    private intervalId: NodeJS.Timeout | null = null;
+    private currentFrame = 0;
+
+    start(message: string): void {
+        this.intervalId = setInterval(() => {
+            const spinner = LoadingIndicator.spinnerFrames[this.currentFrame];
+            process.stdout.write(`\r${spinner} ${message}`);
+            this.currentFrame =
+                (this.currentFrame + 1) % LoadingIndicator.spinnerFrames.length;
+        }, 80);
+    }
+
+    stop(finalMessage?: string): void {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            process.stdout.write(`\r\x1b[K]`);
+
+            if (finalMessage) {
+                console.log(finalMessage);
+            }
+        }
+    }
+}
+
 class VaultCLI {
     private static readonly SALT_SIZE = 32;
     private static readonly ITERATIONS = 10000;
@@ -91,10 +128,13 @@ class VaultCLI {
     }
 
     static async encryptFile(filename: string): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+
         try {
             const data = await fs.readFile(filename, 'utf8');
 
             const password = await this.getPassword(true);
+            loadingIndicator.start(`Encrypting ${filename}...`);
 
             const salt = crypto.randomBytes(this.SALT_SIZE);
             const iv = crypto.randomBytes(16);
@@ -112,16 +152,18 @@ class VaultCLI {
                 encrypted,
             ].join('\n');
 
-            console.log('Writing encrypted content to file...');
             await fs.writeFile(filename, output);
-            console.log('Encryption successful. File updated.');
+
+            loadingIndicator.stop('✔ Encryption successful. File updated.');
         } catch (error: any) {
-            console.error('Encryption failed:', error.message);
+            loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
             process.exit(1);
         }
     }
 
     static async decryptFile(filename: string): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+
         try {
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
@@ -136,20 +178,25 @@ class VaultCLI {
             const encrypted = lines[3];
 
             const key = await this.deriveKey(password, salt);
+
+            loadingIndicator.start(`Decrypting ${filename}...`);
 
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
 
             await fs.writeFile(filename, decrypted);
-            console.log('Decryption successful');
+
+            loadingIndicator.stop('✔ Decryption successful');
         } catch (error: any) {
-            console.error('Decryption failed:', error.message);
+            loadingIndicator.stop(`✘ Decryption failed: ${error.message}`);
             process.exit(1);
         }
     }
 
     static async viewFile(filename: string): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+
         try {
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
@@ -170,14 +217,17 @@ class VaultCLI {
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
 
+            loadingIndicator.stop();
             console.log(decrypted);
         } catch (error: any) {
-            console.error('View failed:', error.message);
+            loadingIndicator.stop(`✘ View failed: ${error.message}`);
             process.exit(1);
         }
     }
 
     static async editFile(filename: string): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+
         try {
             const tempDir = os.tmpdir();
             const tempFile = path.join(tempDir, `vault_edit_${Date.now()}`);
@@ -191,6 +241,8 @@ class VaultCLI {
 
             const password = await this.getPassword();
 
+            loadingIndicator.start(`Preparing to edit ${filename}...`);
+
             const salt = Buffer.from(lines[1], 'hex');
             const iv = Buffer.from(lines[2], 'hex');
             const encrypted = lines[3];
@@ -202,6 +254,8 @@ class VaultCLI {
 
             await fs.writeFile(tempFile, decrypted);
 
+            loadingIndicator.stop('✔ File decrypted for editing');
+
             const editor = process.env.EDITOR || 'nano';
             const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' });
 
@@ -211,6 +265,8 @@ class VaultCLI {
                     else reject(new Error('Edit process failed'));
                 });
             });
+
+            loadingIndicator.start('Re-encrypting edited file...');
 
             const editedContent = await fs.readFile(tempFile, 'utf8');
 
@@ -234,9 +290,11 @@ class VaultCLI {
 
             await fs.unlink(tempFile);
 
-            console.log('File edited and re-encrypted successfully');
+            loadingIndicator.stop(
+                '✔ File edited and re-encrypted successfully',
+            );
         } catch (error: any) {
-            console.error('Edit failed: ', error.messaege);
+            loadingIndicator.stop(`✘ Edit failed: ${error.message}`);
             process.exit(1);
         }
     }
