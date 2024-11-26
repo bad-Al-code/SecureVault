@@ -6,6 +6,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawn } from 'node:child_process';
 
+/*
+ * Utility class to display a spineer-based loading loadingIndicator
+ */
 class LoadingIndicator {
     private static spinnerFrames = [
         '⠋',
@@ -22,6 +25,10 @@ class LoadingIndicator {
     private intervalId: NodeJS.Timeout | null = null;
     private currentFrame = 0;
 
+    /**
+     * Starts the loading spinner with a message.
+     * @param {string} message - The message to display alongside the spinner.
+     */
     start(message: string): void {
         this.intervalId = setInterval(() => {
             const spinner = LoadingIndicator.spinnerFrames[this.currentFrame];
@@ -31,6 +38,10 @@ class LoadingIndicator {
         }, 80);
     }
 
+    /**
+     * Stops the loading spinner and optionally displays a final message.
+     * @param {string} [finalMessage] - The final message to display after stopping.
+     */
     stop(finalMessage?: string): void {
         if (this.intervalId) {
             clearInterval(this.intervalId);
@@ -43,6 +54,9 @@ class LoadingIndicator {
     }
 }
 
+/**
+ * Core class for handling file encryption, decryption, and editing operations.
+ */
 class VaultCLI {
     private static readonly SALT_SIZE = 32;
     private static readonly ITERATIONS = 10000;
@@ -50,6 +64,38 @@ class VaultCLI {
     private static readonly HEADER =
         '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
 
+    /**
+     * Derives a cryptographic key from a password and salt using PBKDF2.
+     * @private
+     * @param {string} password - The password to derive the key from.
+     * @param {Buffer} salt - The cryptographic salt.
+     * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
+     */
+    private static async deriveKey(
+        password: string,
+        salt: Buffer,
+    ): Promise<Buffer> {
+        return new Promise((resolve, reject) => {
+            crypto.pbkdf2(
+                password,
+                salt,
+                this.ITERATIONS,
+                this.KEY_LENGTH,
+                'sha256',
+                (err, derivedKey) => {
+                    if (err) reject(err);
+                    else resolve(derivedKey);
+                },
+            );
+        });
+    }
+
+    /**
+     * Reads a password securely from the terminal.
+     * @private
+     * @param {boolean} [confirm=false] - Whether to prompt for password confirmation.
+     * @returns {Promise<string>} - A promise that resolves to the entered password.
+     */
     private static async getPassword(
         confirm: boolean = false,
     ): Promise<string> {
@@ -108,25 +154,10 @@ class VaultCLI {
         return password;
     }
 
-    private static async deriveKey(
-        password: string,
-        salt: Buffer,
-    ): Promise<Buffer> {
-        return new Promise((resolve, reject) => {
-            crypto.pbkdf2(
-                password,
-                salt,
-                this.ITERATIONS,
-                this.KEY_LENGTH,
-                'sha256',
-                (err, derivedKey) => {
-                    if (err) reject(err);
-                    else resolve(derivedKey);
-                },
-            );
-        });
-    }
-
+    /**
+     * Encrypts the contents of a file.
+     * @param {string} filename - The path to the file to encrypt.
+     */
     static async encryptFile(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
@@ -161,6 +192,10 @@ class VaultCLI {
         }
     }
 
+    /**
+     * Decrypts the contents of a file.
+     * @param {string} filename - The path to the file to decrypt.
+     */
     static async decryptFile(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
@@ -194,6 +229,10 @@ class VaultCLI {
         }
     }
 
+    /**
+     * Displays the contents of an encrypted file.
+     * @param {string} filename - The path to the file to view.
+     */
     static async viewFile(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
@@ -225,6 +264,10 @@ class VaultCLI {
         }
     }
 
+    /**
+     * Edit the contents of a file.
+     * @param {string} filename - The path to the file to edit.
+     */
     static async editFile(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
@@ -299,6 +342,9 @@ class VaultCLI {
         }
     }
 
+    /**
+     * Displays the CLI usage help.
+     */
     static showHelp(): void {
         console.log(`
 Usage: ./main.js <command> <file>

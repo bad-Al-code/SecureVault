@@ -42,11 +42,18 @@ var fs = require("node:fs/promises");
 var os = require("node:os");
 var path = require("node:path");
 var node_child_process_1 = require("node:child_process");
+/*
+ * Utility class to display a spineer-based loading loadingIndicator
+ */
 var LoadingIndicator = /** @class */ (function () {
     function LoadingIndicator() {
         this.intervalId = null;
         this.currentFrame = 0;
     }
+    /**
+     * Starts the loading spinner with a message.
+     * @param {string} message - The message to display alongside the spinner.
+     */
     LoadingIndicator.prototype.start = function (message) {
         var _this = this;
         this.intervalId = setInterval(function () {
@@ -56,6 +63,10 @@ var LoadingIndicator = /** @class */ (function () {
                 (_this.currentFrame + 1) % LoadingIndicator.spinnerFrames.length;
         }, 80);
     };
+    /**
+     * Stops the loading spinner and optionally displays a final message.
+     * @param {string} [finalMessage] - The final message to display after stopping.
+     */
     LoadingIndicator.prototype.stop = function (finalMessage) {
         if (this.intervalId) {
             clearInterval(this.intervalId);
@@ -79,9 +90,40 @@ var LoadingIndicator = /** @class */ (function () {
     ];
     return LoadingIndicator;
 }());
+/**
+ * Core class for handling file encryption, decryption, and editing operations.
+ */
 var VaultCLI = /** @class */ (function () {
     function VaultCLI() {
     }
+    /**
+     * Derives a cryptographic key from a password and salt using PBKDF2.
+     * @private
+     * @param {string} password - The password to derive the key from.
+     * @param {Buffer} salt - The cryptographic salt.
+     * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
+     */
+    VaultCLI.deriveKey = function (password, salt) {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                return [2 /*return*/, new Promise(function (resolve, reject) {
+                        crypto.pbkdf2(password, salt, _this.ITERATIONS, _this.KEY_LENGTH, 'sha256', function (err, derivedKey) {
+                            if (err)
+                                reject(err);
+                            else
+                                resolve(derivedKey);
+                        });
+                    })];
+            });
+        });
+    };
+    /**
+     * Reads a password securely from the terminal.
+     * @private
+     * @param {boolean} [confirm=false] - Whether to prompt for password confirmation.
+     * @returns {Promise<string>} - A promise that resolves to the entered password.
+     */
     VaultCLI.getPassword = function () {
         return __awaiter(this, arguments, void 0, function (confirm) {
             var stdin, stdout, question, password, confirmPassword;
@@ -144,21 +186,10 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
-    VaultCLI.deriveKey = function (password, salt) {
-        return __awaiter(this, void 0, void 0, function () {
-            var _this = this;
-            return __generator(this, function (_a) {
-                return [2 /*return*/, new Promise(function (resolve, reject) {
-                        crypto.pbkdf2(password, salt, _this.ITERATIONS, _this.KEY_LENGTH, 'sha256', function (err, derivedKey) {
-                            if (err)
-                                reject(err);
-                            else
-                                resolve(derivedKey);
-                        });
-                    })];
-            });
-        });
-    };
+    /**
+     * Encrypts the contents of a file.
+     * @param {string} filename - The path to the file to encrypt.
+     */
     VaultCLI.encryptFile = function (filename) {
         return __awaiter(this, void 0, void 0, function () {
             var loadingIndicator, data, password, salt, iv, key, cipher, encrypted, output, error_1;
@@ -205,6 +236,10 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
+    /**
+     * Decrypts the contents of a file.
+     * @param {string} filename - The path to the file to decrypt.
+     */
     VaultCLI.decryptFile = function (filename) {
         return __awaiter(this, void 0, void 0, function () {
             var loadingIndicator, encryptedData, lines, password, salt, iv, encrypted, key, decipher, decrypted, error_2;
@@ -250,6 +285,10 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
+    /**
+     * Displays the contents of an encrypted file.
+     * @param {string} filename - The path to the file to view.
+     */
     VaultCLI.viewFile = function (filename) {
         return __awaiter(this, void 0, void 0, function () {
             var loadingIndicator, encryptedData, lines, password, salt, iv, encrypted, key, decipher, decrypted, error_3;
@@ -292,6 +331,10 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
+    /**
+     * Edit the contents of a file.
+     * @param {string} filename - The path to the file to edit.
+     */
     VaultCLI.editFile = function (filename) {
         return __awaiter(this, void 0, void 0, function () {
             var loadingIndicator, tempDir, tempFile, encryptedData, lines, password, salt, iv, encrypted, key, decipher, decrypted, editor, editProcess_1, editedContent, newSalt, newIv, newKey, cipher, newEncrypted, newOutput, error_4;
@@ -376,6 +419,9 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
+    /**
+     * Displays the CLI usage help.
+     */
     VaultCLI.showHelp = function () {
         console.log("\nUsage: ./main.js <command> <file>\n\nCommands:\n  encrypt <file>    Encrypt a file\n  decrypt <file>    Decrypt a file\n  view <file>       View encrypted file contents\n  edit <file>\t\tEdit and encrypted file\n  help              Show this help message\n\nExamples:\n  ./main.js encrypt secrets.txt\n  ./main.js decrypt secrets.txt\n  ./main.js view secrets.txt\n  ./main.js edit secrets.txt\n    ");
     };
