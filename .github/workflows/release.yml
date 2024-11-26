@@ -10,7 +10,6 @@ jobs:
         runs-on: ubuntu-latest
         permissions:
             contents: write
-            actions: read
 
         steps:
             - name: Checkout code
@@ -37,7 +36,13 @@ jobs:
               with:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   tag: ${{ github.ref_name }}
-                  files: |
+                  artifacts: |
                       vault-linux
                       vault-macos
                       vault-win.exe
+                  name: Vault CLI ${{ github.ref_name }}
+                  body: |
+                      This release contains precompiled binaries for the Vault CLI tool:
+                      - **Linux**: `vault-linux`
+                      - **macOS**: `vault-macos`
+                      - **Windows**: `vault-win.exe`
