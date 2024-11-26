@@ -37,8 +37,11 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-var crypto = require("crypto");
-var fs = require("fs/promises");
+var crypto = require("node:crypto");
+var fs = require("node:fs/promises");
+var os = require("node:os");
+var path = require("node:path");
+var node_child_process_1 = require("node:child_process");
 var VaultCLI = /** @class */ (function () {
     function VaultCLI() {
     }
@@ -241,8 +244,86 @@ var VaultCLI = /** @class */ (function () {
             });
         });
     };
+    VaultCLI.editFile = function (filename) {
+        return __awaiter(this, void 0, void 0, function () {
+            var tempDir, tempFile, encryptedData, lines, password, salt, iv, encrypted, key, decipher, decrypted, editor, editProcess_1, editedContent, newSalt, newIv, newKey, cipher, newEncrypted, newOutput, error_4;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        _a.trys.push([0, 10, , 11]);
+                        tempDir = os.tmpdir();
+                        tempFile = path.join(tempDir, "vault_edit_".concat(Date.now()));
+                        return [4 /*yield*/, fs.readFile(filename, 'utf8')];
+                    case 1:
+                        encryptedData = _a.sent();
+                        lines = encryptedData.split('\n');
+                        if (lines[0] !== this.HEADER.trim()) {
+                            throw new Error('Inalid vault format');
+                        }
+                        return [4 /*yield*/, this.getPassword()];
+                    case 2:
+                        password = _a.sent();
+                        salt = Buffer.from(lines[1], 'hex');
+                        iv = Buffer.from(lines[2], 'hex');
+                        encrypted = lines[3];
+                        return [4 /*yield*/, this.deriveKey(password, salt)];
+                    case 3:
+                        key = _a.sent();
+                        decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+                        decrypted = decipher.update(encrypted, 'hex', 'utf8');
+                        decrypted += decipher.final("utf8");
+                        return [4 /*yield*/, fs.writeFile(tempFile, decrypted)];
+                    case 4:
+                        _a.sent();
+                        editor = process.env.EDITOR || 'nano';
+                        editProcess_1 = (0, node_child_process_1.spawn)(editor, [tempFile], { stdio: 'inherit' });
+                        return [4 /*yield*/, new Promise(function (resolve, reject) {
+                                editProcess_1.on('close', function (code) {
+                                    if (code === 0)
+                                        resolve(true);
+                                    else
+                                        reject(new Error('Edit process failed'));
+                                });
+                            })];
+                    case 5:
+                        _a.sent();
+                        return [4 /*yield*/, fs.readFile(tempFile, 'utf8')];
+                    case 6:
+                        editedContent = _a.sent();
+                        newSalt = crypto.randomBytes(this.SALT_SIZE);
+                        newIv = crypto.randomBytes(16);
+                        return [4 /*yield*/, this.deriveKey(password, newSalt)];
+                    case 7:
+                        newKey = _a.sent();
+                        cipher = crypto.createCipheriv('aes-256-cbc', newKey, newIv);
+                        newEncrypted = cipher.update(editedContent, 'utf8', 'hex');
+                        newEncrypted += cipher.final('hex');
+                        newOutput = [
+                            this.HEADER.trim(),
+                            newSalt.toString('hex'),
+                            newIv.toString('hex'),
+                            newEncrypted,
+                        ].join("\n");
+                        return [4 /*yield*/, fs.writeFile(filename, newOutput)];
+                    case 8:
+                        _a.sent();
+                        return [4 /*yield*/, fs.unlink(tempFile)];
+                    case 9:
+                        _a.sent();
+                        console.log('File edited and re-encrypted successfully');
+                        return [3 /*break*/, 11];
+                    case 10:
+                        error_4 = _a.sent();
+                        console.error('Edit failed: ', error_4.messaege);
+                        process.exit(1);
+                        return [3 /*break*/, 11];
+                    case 11: return [2 /*return*/];
+                }
+            });
+        });
+    };
     VaultCLI.showHelp = function () {
-        console.log("\nUsage: ./main.js <command> <file>\n\nCommands:\n  encrypt <file>    Encrypt a file\n  decrypt <file>    Decrypt a file\n  view <file>       View encrypted file contents\n  help             Show this help message\n\nExamples:\n  ./main.js encrypt secrets.txt\n  ./main.js decrypt secrets.txt\n  ./main.js view secrets.txt\n    ");
+        console.log("\nUsage: ./main.js <command> <file>\n\nCommands:\n  encrypt <file>    Encrypt a file\n  decrypt <file>    Decrypt a file\n  view <file>       View encrypted file contents\n  edit <file>\t\tEdit and encrypted file\n  help              Show this help message\n\nExamples:\n  ./main.js encrypt secrets.txt\n  ./main.js decrypt secrets.txt\n  ./main.js view secrets.txt\n  ./main.js edit secrets.txt\n    ");
     };
     VaultCLI.SALT_SIZE = 32;
     VaultCLI.ITERATIONS = 10000;
@@ -276,26 +357,31 @@ function main() {
                         case 'encrypt': return [3 /*break*/, 1];
                         case 'decrypt': return [3 /*break*/, 3];
                         case 'view': return [3 /*break*/, 5];
+                        case 'edit': return [3 /*break*/, 7];
                     }
-                    return [3 /*break*/, 7];
+                    return [3 /*break*/, 9];
                 case 1: return [4 /*yield*/, VaultCLI.encryptFile(filename)];
                 case 2:
                     _b.sent();
-                    return [3 /*break*/, 8];
+                    return [3 /*break*/, 10];
                 case 3: return [4 /*yield*/, VaultCLI.decryptFile(filename)];
                 case 4:
                     _b.sent();
-                    return [3 /*break*/, 8];
+                    return [3 /*break*/, 10];
                 case 5: return [4 /*yield*/, VaultCLI.viewFile(filename)];
                 case 6:
                     _b.sent();
-                    return [3 /*break*/, 8];
-                case 7:
+                    return [3 /*break*/, 10];
+                case 7: return [4 /*yield*/, VaultCLI.editFile(filename)];
+                case 8:
+                    _b.sent();
+                    return [3 /*break*/, 10];
+                case 9:
                     console.error('Error: Unknown command');
                     VaultCLI.showHelp();
                     process.exit(1);
-                    _b.label = 8;
-                case 8: return [2 /*return*/];
+                    _b.label = 10;
+                case 10: return [2 /*return*/];
             }
         });
     });

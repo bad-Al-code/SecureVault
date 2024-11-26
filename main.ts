@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 
-import * as crypto from 'crypto';
-import * as fs from 'fs/promises';
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs/promises';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { spawn } from 'node:child_process';
 
 class VaultCLI {
     private static readonly SALT_SIZE = 32;
@@ -86,6 +89,7 @@ class VaultCLI {
             );
         });
     }
+
     static async encryptFile(filename: string): Promise<void> {
         try {
             const data = await fs.readFile(filename, 'utf8');
@@ -173,6 +177,70 @@ class VaultCLI {
         }
     }
 
+    static async editFile(filename: string): Promise<void> {
+        try {
+            const tempDir = os.tmpdir();
+            const tempFile = path.join(tempDir, `vault_edit_${Date.now()}`);
+
+            const encryptedData = await fs.readFile(filename, 'utf8');
+            const lines = encryptedData.split('\n');
+
+            if (lines[0] !== this.HEADER.trim()) {
+                throw new Error('Inalid vault format');
+            }
+
+            const password = await this.getPassword();
+
+            const salt = Buffer.from(lines[1], 'hex');
+            const iv = Buffer.from(lines[2], 'hex');
+            const encrypted = lines[3];
+
+            const key = await this.deriveKey(password, salt);
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+            decrypted += decipher.final(`utf8`);
+
+            await fs.writeFile(tempFile, decrypted);
+
+            const editor = process.env.EDITOR || 'nano';
+            const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' });
+
+            await new Promise((resolve, reject) => {
+                editProcess.on('close', (code) => {
+                    if (code === 0) resolve(true);
+                    else reject(new Error('Edit process failed'));
+                });
+            });
+
+            const editedContent = await fs.readFile(tempFile, 'utf8');
+
+            const newSalt = crypto.randomBytes(this.SALT_SIZE);
+            const newIv = crypto.randomBytes(16);
+
+            const newKey = await this.deriveKey(password, newSalt);
+
+            const cipher = crypto.createCipheriv('aes-256-cbc', newKey, newIv);
+            let newEncrypted = cipher.update(editedContent, 'utf8', 'hex');
+            newEncrypted += cipher.final('hex');
+
+            const newOutput = [
+                this.HEADER.trim(),
+                newSalt.toString('hex'),
+                newIv.toString('hex'),
+                newEncrypted,
+            ].join(`\n`);
+
+            await fs.writeFile(filename, newOutput);
+
+            await fs.unlink(tempFile);
+
+            console.log('File edited and re-encrypted successfully');
+        } catch (error: any) {
+            console.error('Edit failed: ', error.messaege);
+            process.exit(1);
+        }
+    }
+
     static showHelp(): void {
         console.log(`
 Usage: ./main.js <command> <file>
@@ -181,12 +249,14 @@ Commands:
   encrypt <file>    Encrypt a file
   decrypt <file>    Decrypt a file
   view <file>       View encrypted file contents
-  help             Show this help message
+  edit <file>		Edit and encrypted file
+  help              Show this help message
 
 Examples:
   ./main.js encrypt secrets.txt
   ./main.js decrypt secrets.txt
   ./main.js view secrets.txt
+  ./main.js edit secrets.txt
     `);
     }
 }
@@ -222,6 +292,9 @@ async function main() {
             break;
         case 'view':
             await VaultCLI.viewFile(filename);
+            break;
+        case 'edit':
+            await VaultCLI.editFile(filename);
             break;
         default:
             console.error('Error: Unknown command');
