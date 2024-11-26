@@ -143,12 +143,10 @@ class VaultCLI {
             });
         };
 
-        const password = await question('New Vault password: ');
+        const password = await question('Vault password: ');
 
         if (confirm) {
-            const confirmPassword = await question(
-                'Confirm New Vault password: ',
-            );
+            const confirmPassword = await question('Confirm Vault password: ');
             if (password !== confirmPassword) {
                 console.error('Error: Passwords do not match');
                 process.exit(1);
@@ -169,8 +167,8 @@ class VaultCLI {
             const data = await fs.readFile(filename, 'utf8');
 
             const password = await this.getPassword(true);
-            loadingIndicator.start(`Encrypting ${filename}...`);
 
+            loadingIndicator.start(`Encrypting ${filename}...`);
             const salt = crypto.randomBytes(this.SALT_SIZE);
             const iv = crypto.randomBytes(16);
 
