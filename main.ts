@@ -351,7 +351,7 @@ class VaultCLI {
      */
     static showHelp(): void {
         console.log(`
-Usage: ./main.js <command> <file>
+Usage: vault <command> <file>
 
 Commands:
   encrypt <file>    Encrypt a file
@@ -361,10 +361,10 @@ Commands:
   help              Show this help message
 
 Examples:
-  ./main.js encrypt secrets.txt
-  ./main.js decrypt secrets.txt
-  ./main.js view secrets.txt
-  ./main.js edit secrets.txt
+  vault encrypt secrets.txt
+  vault decrypt secrets.txt
+  vault view secrets.txt
+  vault edit secrets.txt
     `);
     }
 }
