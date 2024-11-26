@@ -153,6 +153,12 @@ var VaultCLI = /** @class */ (function () {
                                             stdout.write('\b \b');
                                         }
                                     }
+                                    else if (char === '\u0015') {
+                                        // Ctrl+U (Erase all)
+                                        password = '';
+                                        stdout.write('\r' + ' '.repeat(password.length) + '\r');
+                                        stdout.write(prompt);
+                                    }
                                     else if (char === '\r' || char === '\n') {
                                         // Enter Key
                                         stdout.write('\n');
@@ -163,7 +169,6 @@ var VaultCLI = /** @class */ (function () {
                                     }
                                     else {
                                         password += char;
-                                        stdout.write('*');
                                     }
                                 };
                                 stdin.on('data', onData);

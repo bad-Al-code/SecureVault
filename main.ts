@@ -122,6 +122,11 @@ class VaultCLI {
                             password = password.slice(0, -1);
                             stdout.write('\b \b');
                         }
+                    } else if (char === '\u0015') {
+                        // Ctrl+U (Erase all)
+                        password = '';
+                        stdout.write('\r' + ' '.repeat(password.length) + '\r');
+                        stdout.write(prompt);
                     } else if (char === '\r' || char === '\n') {
                         // Enter Key
                         stdout.write('\n');
@@ -131,7 +136,6 @@ class VaultCLI {
                         resolve(password);
                     } else {
                         password += char;
-                        stdout.write('*');
                     }
                 };
 
