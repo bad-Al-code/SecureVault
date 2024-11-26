@@ -8,6 +8,9 @@ on:
 jobs:
     release:
         runs-on: ubuntu-latest
+        permissions:
+            contents: write
+            actions: read
 
         steps:
             - name: Checkout code
@@ -32,6 +35,8 @@ jobs:
             - name: Upload executables to release
               uses: ncipollo/release-action@v1
               with:
+                  token: ${{ secrets.GITHUB_TOKEN }}
+                  tag: ${{ github.ref_name }}
                   files: |
                       vault-linux
                       vault-macos
