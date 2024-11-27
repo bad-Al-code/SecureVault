@@ -41,8 +41,8 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   tag: ${{ github.ref_name }}
                   artifacts: |
-                      vault
-                      vault
+                      vault-linux
+                      vault-macos
                       vault.exe
                   name: Vault CLI ${{ github.ref_name }}
                   body: |
