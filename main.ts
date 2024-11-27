@@ -65,6 +65,20 @@ class VaultCLI {
         '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
 
     /**
+     * Check if a file is already encrypted
+     * @param {string} filename - The path to the file to check
+     * @returns {Promise<boolean>} - Whether the file is encrypted
+     * */
+    private static async isEncrypted(filename: string): Promise<boolean> {
+        try {
+            const content = await fs.readFile(filename, 'utf8');
+            return content.startsWith(this.HEADER.trim());
+        } catch (error) {
+            return false;
+        }
+    }
+
+    /**
      * Derives a cryptographic key from a password and salt using PBKDF2.
      * @private
      * @param {string} password - The password to derive the key from.
@@ -166,6 +180,11 @@ class VaultCLI {
         const loadingIndicator = new LoadingIndicator();
 
         try {
+            if (await this.isEncrypted(filename)) {
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ Error: File is already encrypted');
+                process.exit(1);
+            }
             const data = await fs.readFile(filename, 'utf8');
 
             const password = await this.getPassword(true);
@@ -208,7 +227,9 @@ class VaultCLI {
             const lines = encryptedData.split('\n');
 
             if (lines[0] !== this.HEADER.trim()) {
-                throw new Error('Invalid vault format');
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ Error: File is not encrypted');
+                process.exit(1);
             }
 
             const password = await this.getPassword();
@@ -245,7 +266,9 @@ class VaultCLI {
             const lines = encryptedData.split('\n');
 
             if (lines[0] !== this.HEADER.trim()) {
-                throw new Error('Invalid vault format');
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ Error: File is not encrypted');
+                process.exit(1);
             }
 
             const password = await this.getPassword();
@@ -347,7 +370,9 @@ class VaultCLI {
             const lines = encryptedData.split('\n');
 
             if (lines[0] !== this.HEADER.trim()) {
-                throw new Error('Inalid vault format');
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ Error: File is not encrypted');
+                process.exit(1);
             }
 
             const password = await this.getPassword();
