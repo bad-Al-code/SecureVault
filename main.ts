@@ -4,7 +4,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { spawn } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 
 /*
  * Utility class to display a spineer-based loading loadingIndicator
@@ -266,6 +266,64 @@ class VaultCLI {
         }
     }
 
+    private static selectEditor(): { command: string; args: string[] } {
+        const envEditor = process.env.EDITOR;
+        if (envEditor) {
+            return { command: envEditor, args: [] };
+        }
+
+        const platform = os.platform();
+        switch (platform) {
+            case 'win32':
+                const windowsEditor = [
+                    { command: 'notepad.exe', args: [] },
+                    { command: 'code.cmd', args: ['-w'] },
+                    { command: 'notepad++.exe', args: [] },
+                ];
+                for (const editor of windowsEditor) {
+                    try {
+                        execSync(`where ${editor.command}`, {
+                            stdio: 'ignore',
+                        });
+                        return editor;
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                break;
+
+            case 'darwin':
+                return {
+                    command: 'open',
+                    args: ['-e'],
+                };
+
+            case 'linux':
+                const linuxEditors = [
+                    { command: 'nano', args: [] },
+                    { command: 'vim', args: [] },
+                    { command: 'emacs', args: [] },
+                ];
+
+                for (const editor of linuxEditors) {
+                    try {
+                        execSync(`which ${editor.command}`, {
+                            stdio: 'ignore',
+                        });
+                        return editor;
+                    } catch (error) {
+                        continue;
+                    }
+                }
+                break;
+        }
+
+        return {
+            command: platform === 'win32' ? 'notepad.exe' : 'nano',
+            args: [],
+        };
+    }
+
     /**
      * Edit the contents of a file.
      * @param {string} filename - The path to the file to edit.
@@ -301,8 +359,12 @@ class VaultCLI {
 
             loadingIndicator.stop('✔ File decrypted for editing');
 
-            const editor = process.env.EDITOR || 'nano';
-            const editProcess = spawn(editor, [tempFile], { stdio: 'inherit' });
+            const editor = this.selectEditor();
+            const editProcess = spawn(
+                editor.command,
+                [...editor.args, tempFile],
+                { stdio: 'inherit' },
+            );
 
             await new Promise((resolve, reject) => {
                 editProcess.on('close', (code) => {
