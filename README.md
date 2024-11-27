@@ -1,15 +1,84 @@
-Create a similar vault like ansible-vault.
+# VAULT CLI
 
-- Ansible-vault uses AES-256 encryption in CBC mode with a PBKDF2 key derivation.
+Vault is secure, command-line file encryption tool that helps you protect sensitive files with string AES-256-CBC encryption.
 
-### How it Works?
+### Features
 
-1. **Encryption**:
-   - Genreate a random salt
-   - Use PBKDF2 to derive an encryption key from the password and salt
-   - Genereate a random IV (initialization vector)
-   - Encrypt file(data) using AES-256-CBC
-2. **Decryption**:
-   - Extracts salt, IV and encrypted data
-   - Get the key, using the same process
-   - Decrypt using AES-256-CBC
+-   **Robust Encryption**: Use AES-256-CBC encryption with PBKDF2 key derivation
+-   **File Operations**:
+    -   Encrypt file
+    -   Decrypt file
+    -   View Encrypted file contents
+    -   Edit Encrypted file directly
+-   **Cross Platform**: Works on Linux, macOS, and Windows
+-   **Secure Password Handling**: Masked password input with advanced terminal control
+
+### Installation
+
+##### Download Prebuilt Binaries
+
+Download the appropriate binary for your operating system from the Releases page:
+
+-   Linux: `vault-linux`
+-   macOS: `vault-macos`
+-   Windows: `vault-win.exe`
+
+##### Build from Source
+
+1. Clone the repository
+
+```bash
+git clone https://github.com/bad-Al-code/SecureVault.git
+cd SecureVault
+```
+
+2. Install dependencies
+
+```bash
+npm install
+```
+
+3. Build the project
+
+```bash
+npm run build
+```
+
+### Usage
+
+##### Basic Commands
+
+```bash
+# Encrypt a file
+vault encrypt secrets.txt
+
+# Decrypt a file
+vault decrypt secrets.txt
+
+# View encrypted file contents
+vault view secrets.txt
+
+# Edit an encrypted file (opens in your default editor)
+vault edit secrets.txt
+```
+
+##### Help
+
+```bash
+vault help
+```
+
+### Security Details
+
+-   **Encryption Method**: AES-256-CBC
+-   **Key Derivation**: PBKDF2 with 10,000 iterations
+-   **Salt Size**: 32 bytes
+-   **Initialization Vector**: 16 bytes
+
+### Requirements
+
+-   Node.js 18+
+
+### Disclaimer
+
+Always maintain backups of your important files. While Vault provides strong encryption, no system is 100% infallible.
