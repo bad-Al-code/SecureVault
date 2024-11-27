@@ -41,9 +41,9 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
                   tag: ${{ github.ref_name }}
                   artifacts: |
-                      vault-linux
-                      vault-macos
-                      vault-win.exe
+                      vault
+                      vault
+                      vault.exe
                   name: Vault CLI ${{ github.ref_name }}
                   body: |
                       This release contains precompiled binaries for the Vault CLI tool:

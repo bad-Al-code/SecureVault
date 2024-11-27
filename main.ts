@@ -70,6 +70,7 @@ class VaultCLI {
      * @param {string} password - The password to derive the key from.
      * @param {Buffer} salt - The cryptographic salt.
      * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
+     * @throws {Error} If key derivation fails.
      */
     private static async deriveKey(
         password: string,
@@ -95,6 +96,7 @@ class VaultCLI {
      * @private
      * @param {boolean} [confirm=false] - Whether to prompt for password confirmation.
      * @returns {Promise<string>} - A promise that resolves to the entered password.
+     * @throws {Error} If password confirmation fails
      */
     private static async getPassword(
         confirm: boolean = false,
@@ -266,6 +268,12 @@ class VaultCLI {
         }
     }
 
+    /**
+     * Select the most approriate text editor based on OS and environment.
+     * @returns {Object} An object containing the editor command and its arguments
+     * @property {string} command - The executable command for the text editor
+     * @property {string[]} args - Additional arguments for the editor command
+     * */
     private static selectEditor(): { command: string; args: string[] } {
         const envEditor = process.env.EDITOR;
         if (envEditor) {
@@ -300,8 +308,8 @@ class VaultCLI {
 
             case 'linux':
                 const linuxEditors = [
-                    { command: 'nano', args: [] },
                     { command: 'vim', args: [] },
+                    { command: 'nano', args: [] },
                     { command: 'emacs', args: [] },
                 ];
 
