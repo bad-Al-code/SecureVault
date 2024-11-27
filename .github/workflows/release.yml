@@ -43,7 +43,7 @@ jobs:
                   artifacts: |
                       vault-linux
                       vault-macos
-                      vault.exe
+                      vault-win.exe
                   name: Vault CLI ${{ github.ref_name }}
                   body: |
                       This release contains precompiled binaries for the Vault CLI tool:
