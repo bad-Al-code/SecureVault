@@ -363,9 +363,6 @@ class VaultCLI {
         const loadingIndicator = new LoadingIndicator();
 
         try {
-            const tempDir = os.tmpdir();
-            const tempFile = path.join(tempDir, `vault_edit_${Date.now()}`);
-
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
 
@@ -388,14 +385,14 @@ class VaultCLI {
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final(`utf8`);
 
-            await fs.writeFile(tempFile, decrypted);
+            await fs.writeFile(filename, decrypted);
 
             loadingIndicator.stop('✔ File decrypted for editing');
 
             const editor = this.selectEditor();
             const editProcess = spawn(
                 editor.command,
-                [...editor.args, tempFile],
+                [...editor.args, filename],
                 { stdio: 'inherit' },
             );
 
@@ -408,7 +405,7 @@ class VaultCLI {
 
             loadingIndicator.start('Re-encrypting edited file...');
 
-            const editedContent = await fs.readFile(tempFile, 'utf8');
+            const editedContent = await fs.readFile(filename, 'utf8');
 
             const newSalt = crypto.randomBytes(this.SALT_SIZE);
             const newIv = crypto.randomBytes(16);
@@ -427,8 +424,6 @@ class VaultCLI {
             ].join(`\n`);
 
             await fs.writeFile(filename, newOutput);
-
-            await fs.unlink(tempFile);
 
             loadingIndicator.stop(
                 '✔ File edited and re-encrypted successfully',
