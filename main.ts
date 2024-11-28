@@ -392,8 +392,6 @@ class VaultCLI {
 
             const password = await this.getPassword();
 
-            loadingIndicator.start(`Preparing to edit ${filename}...`);
-
             const salt = Buffer.from(lines[1], 'hex');
             const iv = Buffer.from(lines[2], 'hex');
             const encrypted = lines[3];
@@ -404,8 +402,6 @@ class VaultCLI {
             decrypted += decipher.final(`utf8`);
 
             await fs.writeFile(filename, decrypted);
-
-            loadingIndicator.stop('✔ File decrypted for editing');
 
             const editor = this.selectEditor();
             const editProcess = spawn(
@@ -477,6 +473,7 @@ Examples:
 
 async function main() {
     const args = process.argv.slice(2);
+    const loadingIndicator = new LoadingIndicator();
 
     if (
         args.length < 1 ||
@@ -489,7 +486,10 @@ async function main() {
     }
 
     if (args.length < 2) {
-        console.error('Error: Please provide both command and filename');
+        loadingIndicator.start('');
+        loadingIndicator.stop(
+            '✘ Error: Please provide both command and filename',
+        );
         VaultCLI.showHelp();
         process.exit(1);
     }
@@ -504,16 +504,31 @@ async function main() {
         case 'decrypt':
             await VaultCLI.decryptFile(filenames);
             break;
-        // case 'view':
-        //     await VaultCLI.viewFile(filename);
-        //     break;
-        // case 'edit':
-        //     await VaultCLI.editFile(filename);
-        //     break;
-        // default:
-        //     console.error('Error: Unknown command');
-        //     VaultCLI.showHelp();
-        //     process.exit(1);
+        case 'view':
+            if (filenames.length > 1) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    '✘ Error: View command supports only one file at a time',
+                );
+                process.exit(1);
+            }
+            await VaultCLI.viewFile(filenames[0]);
+            break;
+        case 'edit':
+            if (filenames.length > 1) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    '✘ Error: Edit command supports only one file at a time',
+                );
+                process.exit(1);
+            }
+            await VaultCLI.editFile(filenames[0]);
+            break;
+        default:
+            loadingIndicator.start('');
+            loadingIndicator.stop('✘ Error: Unknown command');
+            VaultCLI.showHelp();
+            process.exit(1);
     }
 }
 
