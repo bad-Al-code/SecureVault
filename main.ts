@@ -174,41 +174,47 @@ class VaultCLI {
 
     /**
      * Encrypts the contents of a file.
-     * @param {string} filename - The path to the file to encrypt.
+     * @param {string[]} filenames - Array of file path to encrypt
      */
-    static async encryptFile(filename: string): Promise<void> {
+    static async encryptFile(filenames: string[]): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
         try {
-            if (await this.isEncrypted(filename)) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is already encrypted');
-                process.exit(1);
+            for (const filename of filenames) {
+                if (await this.isEncrypted(filename)) {
+                    loadingIndicator.start('');
+                    loadingIndicator.stop('✘ Error: File is already encrypted');
+                    process.exit(1);
+                }
             }
-            const data = await fs.readFile(filename, 'utf8');
 
             const password = await this.getPassword(true);
 
-            loadingIndicator.start(`Encrypting ${filename}...`);
-            const salt = crypto.randomBytes(this.SALT_SIZE);
-            const iv = crypto.randomBytes(16);
+            for (const filename of filenames) {
+                loadingIndicator.start(`Encrypting ${filename}...`);
+                const salt = crypto.randomBytes(this.SALT_SIZE);
+                const iv = crypto.randomBytes(16);
 
-            const key = await this.deriveKey(password, salt);
+                const key = await this.deriveKey(password, salt);
+                const data = await fs.readFile(filename, 'utf8');
 
-            const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-            let encrypted = cipher.update(data, 'utf8', 'hex');
-            encrypted += cipher.final('hex');
+                const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+                let encrypted = cipher.update(data, 'utf8', 'hex');
+                encrypted += cipher.final('hex');
 
-            const output = [
-                this.HEADER.trim(),
-                salt.toString('hex'),
-                iv.toString('hex'),
-                encrypted,
-            ].join('\n');
+                const output = [
+                    this.HEADER.trim(),
+                    salt.toString('hex'),
+                    iv.toString('hex'),
+                    encrypted,
+                ].join('\n');
 
-            await fs.writeFile(filename, output);
+                await fs.writeFile(filename, output);
 
-            loadingIndicator.stop('✔ Encryption successful. File updated.');
+                loadingIndicator.stop(
+                    '✔ Encryption successful. File updated.',
+                );
+            }
         } catch (error: any) {
             loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
             process.exit(1);
@@ -477,25 +483,25 @@ async function main() {
     }
 
     const command = args[0];
-    const filename = args[1];
+    const filenames = args.slice(1);
 
     switch (command) {
         case 'encrypt':
-            await VaultCLI.encryptFile(filename);
+            await VaultCLI.encryptFile(filenames);
             break;
-        case 'decrypt':
-            await VaultCLI.decryptFile(filename);
-            break;
-        case 'view':
-            await VaultCLI.viewFile(filename);
-            break;
-        case 'edit':
-            await VaultCLI.editFile(filename);
-            break;
-        default:
-            console.error('Error: Unknown command');
-            VaultCLI.showHelp();
-            process.exit(1);
+        // case 'decrypt':
+        //     await VaultCLI.decryptFile(filename);
+        //     break;
+        // case 'view':
+        //     await VaultCLI.viewFile(filename);
+        //     break;
+        // case 'edit':
+        //     await VaultCLI.editFile(filename);
+        //     break;
+        // default:
+        //     console.error('Error: Unknown command');
+        //     VaultCLI.showHelp();
+        //     process.exit(1);
     }
 }
 
