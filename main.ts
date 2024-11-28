@@ -183,7 +183,9 @@ class VaultCLI {
             for (const filename of filenames) {
                 if (await this.isEncrypted(filename)) {
                     loadingIndicator.start('');
-                    loadingIndicator.stop('✘ Error: File is already encrypted');
+                    loadingIndicator.stop(
+                        `✘ Error:  ${filename} File is already encrypted`,
+                    );
                     process.exit(1);
                 }
             }
@@ -211,9 +213,7 @@ class VaultCLI {
 
                 await fs.writeFile(filename, output);
 
-                loadingIndicator.stop(
-                    '✔ Encryption successful. File updated.',
-                );
+                loadingIndicator.stop(`✔ ${filename} encrypted successfully`);
             }
         } catch (error: any) {
             loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
@@ -223,37 +223,49 @@ class VaultCLI {
 
     /**
      * Decrypts the contents of a file.
-     * @param {string} filename - The path to the file to decrypt.
+     * @param {string[]} filenames - Array of path to decrypt
      */
-    static async decryptFile(filename: string): Promise<void> {
+    static async decryptFile(filenames: string[]): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
         try {
-            const encryptedData = await fs.readFile(filename, 'utf8');
-            const lines = encryptedData.split('\n');
+            for (const filename of filenames) {
+                const encryptedData = await fs.readFile(filename, 'utf8');
+                const lines = encryptedData.split('\n');
 
-            if (lines[0] !== this.HEADER.trim()) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is not encrypted');
-                process.exit(1);
+                if (lines[0] !== this.HEADER.trim()) {
+                    loadingIndicator.start('');
+                    loadingIndicator.stop('✘ Error: File is not encrypted');
+                    process.exit(1);
+                }
             }
 
             const password = await this.getPassword();
-            const salt = Buffer.from(lines[1], 'hex');
-            const iv = Buffer.from(lines[2], 'hex');
-            const encrypted = lines[3];
 
-            const key = await this.deriveKey(password, salt);
+            for (const filename of filenames) {
+                loadingIndicator.start(`Decrypting ${filename}...`);
 
-            loadingIndicator.start(`Decrypting ${filename}...`);
+                const encryptedData = await fs.readFile(filename, 'utf8');
+                const lines = encryptedData.split('\n');
 
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
+                const salt = Buffer.from(lines[1], 'hex');
+                const iv = Buffer.from(lines[2], 'hex');
+                const encrypted = lines[3];
 
-            await fs.writeFile(filename, decrypted);
+                const key = await this.deriveKey(password, salt);
 
-            loadingIndicator.stop('✔ Decryption successful');
+                const decipher = crypto.createDecipheriv(
+                    'aes-256-cbc',
+                    key,
+                    iv,
+                );
+                let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+                decrypted += decipher.final('utf8');
+
+                await fs.writeFile(filename, decrypted);
+
+                loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
+            }
         } catch (error: any) {
             loadingIndicator.stop(`✘ Decryption failed: ${error.message}`);
             process.exit(1);
@@ -489,9 +501,9 @@ async function main() {
         case 'encrypt':
             await VaultCLI.encryptFile(filenames);
             break;
-        // case 'decrypt':
-        //     await VaultCLI.decryptFile(filename);
-        //     break;
+        case 'decrypt':
+            await VaultCLI.decryptFile(filenames);
+            break;
         // case 'view':
         //     await VaultCLI.viewFile(filename);
         //     break;
