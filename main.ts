@@ -539,9 +539,9 @@ Commands:
 
 Examples:
   vault encrypt secrets.txt
-  vault encrypt /path/to/secret/directory
+  vault encrypt secrets.txt test.json
   vault decrypt secrets.txt
-  vault decrypt /path/to/encrypted/directory
+  vault decrypt secrets.txt test.json
   vault view secrets.txt
   vault edit secrets.txt
     `);

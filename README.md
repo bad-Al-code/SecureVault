@@ -60,6 +60,13 @@ vault view secrets.txt
 
 # Edit an encrypted file (opens in your default editor)
 vault edit secrets.txt
+
+# Encrypt multi-file at once
+vault encrypt secrets.ts test.json
+
+# Decrypt multi-file at once
+vault decrypt secrets.ts test.json
+
 ```
 
 ##### Help
