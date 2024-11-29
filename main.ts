@@ -3,7 +3,9 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
+import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 
 /*
  * Utility class to display a spineer-based loading loadingIndicator
@@ -49,6 +51,76 @@ class LoadingIndicator {
             if (finalMessage) {
                 console.log(finalMessage);
             }
+        }
+    }
+}
+
+class VersionControl {
+    private static VAULT_HISTORY_DIR = '.vault_history';
+
+    /**
+     * Get file content hash
+     * @param {string} filename - The path to the file
+     * @returns {string} - Hash of the file content
+     * */
+    private static getFileHash(filename: string): string {
+        try {
+            const fileBuffer = readFileSync(filename);
+            return crypto.createHash('sha256').update(fileBuffer).digest('hex');
+        } catch (error) {
+            return '';
+        }
+    }
+
+    /**
+     * Initialize version control for a file
+     * @param {string} filename - The path to the file
+     * @param {string} commitMessage - initial commit message
+     * */
+    static async intiVersionControl(
+        filename: string,
+        commitMessage: string,
+    ): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+        const historyDir = path.join(
+            path.dirname(filename),
+            this.VAULT_HISTORY_DIR,
+        );
+
+        try {
+            await fs.mkdir(historyDir, { recursive: true });
+
+            const logFile = path.join(historyDir, 'version_log.json');
+            let versionLog: any[] = [];
+
+            try {
+                const existingLog = await fs.readFile(logFile, 'utf8');
+                versionLog = JSON.parse(existingLog);
+            } catch (error) {
+                // TODO: create a new log file, if log file doesn't exist
+            }
+
+            const versionId = crypto.randomBytes(16).toString('hex');
+
+            const versionEntry = {
+                id: versionId,
+                timeStamp: new Date().toISOString(),
+                message: commitMessage,
+                originalHealth: this.getFileHash(filename),
+            };
+
+            versionLog.push(versionEntry);
+
+            await fs.writeFile(logFile, JSON.stringify(versionLog, null, 2));
+
+            const versionFile = path.join(historyDir, `${versionId}.enc`);
+
+            await fs.copyFile(filename, versionFile);
+        } catch (error: any) {
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `Version control initialization failed: ${error} `,
+            );
         }
     }
 }
@@ -211,6 +283,11 @@ class VaultCLI {
                 ].join('\n');
 
                 await fs.writeFile(filename, output);
+
+                await VersionControl.intiVersionControl(
+                    filename,
+                    `Initial encryption of ${path.basename(filename)}`,
+                );
 
                 loadingIndicator.stop(`✔ ${filename} encrypted successfully`);
             }
