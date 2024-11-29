@@ -161,6 +161,50 @@ Message: ${entry.message}
             );
         }
     }
+
+    /**
+     * Restore a file to a specific version
+     * @param {string} filename - The path to the file
+     * @param {string} versionID - The ID of the version to restore
+     * */
+    static async restoreVersion(
+        filename: string,
+        versionId: string,
+    ): Promise<void> {
+        const historyDir = path.join(
+            path.dirname(filename),
+            this.VAULT_HISTORY_DIR,
+        );
+        const loadingIndicator = new LoadingIndicator();
+        const logFile = path.join(historyDir, 'version_log.json');
+        const versionFile = path.join(historyDir, `${versionId}.enc`);
+
+        try {
+            loadingIndicator.start('');
+            const logContent = await fs.readFile(logFile, 'utf8');
+            const versionLog = JSON.parse(logContent);
+
+            const versionEntry = versionLog.find(
+                (entry: any) => entry.id === versionId,
+            );
+
+            if (!versionEntry) {
+                throw new Error('Version not found');
+            }
+
+            await fs.copyFile(versionFile, filename);
+
+            loadingIndicator.stop(
+                `Restored version ${versionId} from ${versionEntry.timeStamp}`,
+            );
+        } catch (error: any) {
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `Version restoration failed: ${error.message}`,
+            );
+            process.exit(1);
+        }
+    }
 }
 
 /**
@@ -590,6 +634,7 @@ Commands:
   view <file>       			View encrypted file contents
   edit <file>					Edit and encrypted file
   history <file>				Show version history for an encrypted file
+  restore <file> <versionId> 	Restore a specific version of an encrypted file
   help              Show this help message
 
 Examples:
@@ -666,6 +711,16 @@ async function main() {
                 process.exit(1);
             }
             await VersionControl.showHistory(filenames[0]);
+            break;
+        case 'restore':
+            if (filenames.length > 2) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    '✘ Error: Restire command supports only two args at a time',
+                );
+                process.exit(1);
+            }
+            await VersionControl.restoreVersion(filenames[0], filenames[1]);
             break;
         default:
             loadingIndicator.start('');
