@@ -3,7 +3,6 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
-import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
 
 /*
@@ -217,81 +216,6 @@ class VaultCLI {
             }
         } catch (error: any) {
             loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
-            process.exit(1);
-        }
-    }
-
-    private static async getAllfiles(dirPath: string): Promise<string[]> {
-        const entries = await fs.readdir(dirPath, { withFileTypes: true });
-        const files: string[] = [];
-
-        for (const entry of entries) {
-            const fullPath = path.join(dirPath, entry.name);
-            if (entry.isDirectory()) {
-                const subfiles = await this.getAllfiles(fullPath);
-                files.push(...subfiles);
-            } else {
-                files.push(fullPath);
-            }
-        }
-
-        return files;
-    }
-
-    static async encryptDirectory(directoryPath: string): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-
-        try {
-            await fs.access(directoryPath);
-            const stats = await fs.stat(directoryPath);
-            if (!stats.isDirectory()) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    `✘ Error: ${directoryPath} is not a directory`,
-                );
-                process.exit(1);
-            }
-
-            const files = await this.getAllfiles(directoryPath);
-
-            for (const file of files) {
-                if (await this.isEncrypted(file)) {
-                    loadingIndicator.start('');
-                    loadingIndicator.stop(
-                        `✘ Error: ${file} is already encrypted`,
-                    );
-                    process.exit(1);
-                }
-            }
-
-            const password = await this.getPassword(true);
-
-            for (const file of files) {
-                loadingIndicator.start(`Encrypting ${file}...`);
-                const salt = crypto.randomBytes(this.SALT_SIZE);
-                const iv = crypto.randomBytes(16);
-
-                const key = await this.deriveKey(password, salt);
-                const data = await fs.readFile(file, 'utf8');
-
-                const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-                let encrypted = cipher.update(data, 'utf8', 'hex');
-                encrypted += cipher.final('hex');
-
-                const output = [
-                    this.HEADER.trim(),
-                    salt.toString('hex'),
-                    iv.toString('hex'),
-                    encrypted,
-                ].join('\n');
-
-                await fs.writeFile(file, output);
-                loadingIndicator.stop(`✔ ${file} encrypted successfully`);
-            }
-        } catch (error: any) {
-            loadingIndicator.stop(
-                `✘ Directory encryption failed: ${error.message}`,
-            );
             process.exit(1);
         }
     }
