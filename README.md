@@ -76,6 +76,7 @@ chmod +x ./main.js
 # View version history of a file
 ./main.js history secrets.txt
 
+#NOTE: for versionID: look at the ./.vault_history/version_log.json
 # Restore a file to a specific version
 ./main.js restore secrets.txt <versionID>
 ```
