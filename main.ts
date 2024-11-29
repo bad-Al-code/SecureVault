@@ -82,15 +82,17 @@ class VersionControl {
         commitMessage: string,
     ): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
-        const historyDir = path.join(
+        const fileBaseName = path.basename(filename);
+        const fileHistoryDir = path.join(
             path.dirname(filename),
             this.VAULT_HISTORY_DIR,
+            fileBaseName,
         );
 
         try {
-            await fs.mkdir(historyDir, { recursive: true });
+            await fs.mkdir(fileHistoryDir, { recursive: true });
 
-            const logFile = path.join(historyDir, 'version_log.json');
+            const logFile = path.join(fileHistoryDir, 'version_log.json');
             let versionLog: any[] = [];
 
             try {
@@ -113,13 +115,13 @@ class VersionControl {
 
             await fs.writeFile(logFile, JSON.stringify(versionLog, null, 2));
 
-            const versionFile = path.join(historyDir, `${versionId}.enc`);
+            const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
 
             await fs.copyFile(filename, versionFile);
         } catch (error: any) {
             loadingIndicator.start('');
             loadingIndicator.stop(
-                `Version control initialization failed: ${error} `,
+                `Version control initialization failed: ${error.message} `,
             );
         }
     }
@@ -130,11 +132,13 @@ class VersionControl {
      * */
     static async showHistory(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
-        const historyDir = path.join(
+        const fileBaseName = path.basename(filename);
+        const fileHistoryDir = path.join(
             path.dirname(filename),
             this.VAULT_HISTORY_DIR,
+            fileBaseName,
         );
-        const logFile = path.join(historyDir, 'version_log.json');
+        const logFile = path.join(fileHistoryDir, 'version_log.json');
 
         try {
             const logContent = await fs.readFile(logFile, 'utf8');
@@ -171,13 +175,15 @@ Message: ${entry.message}
         filename: string,
         versionId: string,
     ): Promise<void> {
-        const historyDir = path.join(
+        const fileBaseName = path.basename(filename);
+        const fileHistoryDir = path.join(
             path.dirname(filename),
             this.VAULT_HISTORY_DIR,
+            fileBaseName,
         );
         const loadingIndicator = new LoadingIndicator();
-        const logFile = path.join(historyDir, 'version_log.json');
-        const versionFile = path.join(historyDir, `${versionId}.enc`);
+        const logFile = path.join(fileHistoryDir, 'version_log.json');
+        const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
 
         try {
             const logContent = await fs.readFile(logFile, 'utf8');
