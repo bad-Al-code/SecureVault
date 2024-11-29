@@ -51,34 +51,36 @@ chmod +x ./main.js
 
 ```bash
 # Encrypt a file
-./main.js encrypt secrets.txt
+vault encrypt secrets.txt
 
 # Decrypt a file
-./main.js decrypt secrets.txt
+vault decrypt secrets.txt
 
 # View encrypted file contents
-./main.js view secrets.txt
+vault view secrets.txt
 
 # Edit an encrypted file (opens in your default editor)
-./main.js edit secrets.txt
+vault edit secrets.txt
 
 # Encrypt multiple files at once
-./main.js encrypt secrets.txt test.json
+vault encrypt secrets.txt test.json
 
 # Decrypt multiple files at once
-./main.js decrypt secrets.txt test.json
+vault decrypt secrets.txt test.json
 
 ```
+
+> NOTE: For windows, use `vault.exe <command name>`
 
 ##### Version Management
 
 ```bash
 # View version history of a file
-./main.js history secrets.txt
+vault history secrets.txt
 
 #NOTE: for versionID: look at the ./.vault_history/version_log.json
 # Restore a file to a specific version
-./main.js restore secrets.txt <versionID>
+vault restore secrets.txt <versionID>
 ```
 
 ##### Help
