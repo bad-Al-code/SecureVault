@@ -226,6 +226,89 @@ Message: ${entry.message}
             process.exit(1);
         }
     }
+
+    /**
+     * Caluculate differences between two file contents
+     * @private
+     * @param {string} content1 - The content of the first file
+     * @param {string} content2 - The content of the second file
+     * @returns {string[]} An array of lines present in content1 but not in content2.
+     * */
+    private static calculateDifferences(
+        content1: string,
+        content2: string,
+    ): string[] {
+        const lines1 = content1.split('\n');
+        const lines2 = content2.split('\n');
+
+        return lines1.filter((line) => !lines2.includes(line));
+    }
+
+    /**
+     * Compare two versions of a file and return their metadata and differences.
+     *
+     * @static
+     * @param {string} filename - The path to the file being compared.
+     * @param {string} version1Id - The ID of the first version to compare.
+     * @param {string} version2Id - The ID of the second version to compare.
+     * @returns {Promise<object>} A promise resolving to an object containing
+     * metadata of both versions and the differences between them.
+     * @throws Will throw an error if version comparison fails.
+     */
+    static async compareVersions(
+        filename: string,
+        version1Id: string,
+        version2Id: string,
+    ): Promise<object> {
+        const loadingIndicator = new LoadingIndicator();
+        const fileBaseName = path.basename(filename);
+        const fileHistoryDir = path.join(
+            path.dirname(filename),
+            this.VAULT_HISTORY_DIR,
+            fileBaseName,
+        );
+
+        const logFile = path.join(fileHistoryDir, 'version_log.json');
+
+        try {
+            const exitingLog = await fs.readFile(logFile, 'utf8');
+            const versionLog = JSON.parse(exitingLog);
+
+            const version1File = path.join(fileHistoryDir, `${version1Id}.enc`);
+            const version2File = path.join(fileHistoryDir, `${version2Id}.enc`);
+
+            const version1Content = await fs.readFile(version1File, 'utf8');
+            const version2Content = await fs.readFile(version2File, 'utf8');
+
+            return {
+                // version1: {
+                //     id: version1Id,
+                //     timestamp: versionLog.find((v: any) => v.id === version1Id)
+                //         ?.timeStamp,
+                //     size: version1Content.length,
+                // },
+                //
+                // version2: {
+                //     id: version2Id,
+                //     timestamp: versionLog.find((v: any) => v.id === version2Id)
+                //         ?.timeStamp,
+                //     size: version1Content.length,
+                // },
+
+                differences: this.calculateDifferences(
+                    version1Content,
+                    version2Content,
+                ),
+            };
+        } catch (error: any) {
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `Version comparison failed: ${error.message}`,
+            );
+
+            throw error;
+        }
+    }
 }
 
 /**
@@ -738,6 +821,28 @@ async function main() {
             }
             await VersionControl.restoreVersion(filenames[0], filenames[1]);
             break;
+        case 'compare':
+            if (filenames.length !== 3) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    '✘ Error: Compare command requires a filename and two version IDs',
+                );
+                process.exit(1);
+            }
+            const filename = filenames[0];
+            const version1Id = filenames[1];
+            const version2Id = filenames[2];
+            const result = await VersionControl.compareVersions(
+                filename,
+                version1Id,
+                version2Id,
+            );
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `Comparison Result: ${JSON.stringify(result, null, 2)}`,
+            );
+            break;
+
         default:
             loadingIndicator.start('');
             loadingIndicator.stop('✘ Error: Unknown command');
