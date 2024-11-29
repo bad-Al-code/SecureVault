@@ -5,7 +5,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
-import { readFileSync, truncateSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 
 /*
  * Utility class to display a spineer-based loading loadingIndicator
@@ -268,33 +268,37 @@ Message: ${entry.message}
             fileBaseName,
         );
 
-        const logFile = path.join(fileHistoryDir, 'version_log.json');
-
         try {
+            const password = await VaultCLI.getPassword();
+            const logFile = path.join(fileHistoryDir, 'version_log.json');
             const exitingLog = await fs.readFile(logFile, 'utf8');
             const versionLog = JSON.parse(exitingLog);
 
             const version1File = path.join(fileHistoryDir, `${version1Id}.enc`);
             const version2File = path.join(fileHistoryDir, `${version2Id}.enc`);
 
-            const version1Content = await fs.readFile(version1File, 'utf8');
-            const version2Content = await fs.readFile(version2File, 'utf8');
+            const decryptVersion = async (versionFile: string) => {
+                const encryptedData = await fs.readFile(versionFile, 'utf8');
+                const lines = encryptedData.split('\n');
+                const salt = Buffer.from(lines[1], 'hex');
+                const iv = Buffer.from(lines[2], 'hex');
+                const encrypted = lines[3];
+
+                const key = await VaultCLI.deriveKey(password, salt);
+                const decipher = crypto.createDecipheriv(
+                    'aes-256-cbc',
+                    key,
+                    iv,
+                );
+                let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+                decrypted += decipher.final('utf8');
+                return decrypted;
+            };
+
+            const version1Content = await decryptVersion(version1File);
+            const version2Content = await decryptVersion(version2File);
 
             return {
-                // version1: {
-                //     id: version1Id,
-                //     timestamp: versionLog.find((v: any) => v.id === version1Id)
-                //         ?.timeStamp,
-                //     size: version1Content.length,
-                // },
-                //
-                // version2: {
-                //     id: version2Id,
-                //     timestamp: versionLog.find((v: any) => v.id === version2Id)
-                //         ?.timeStamp,
-                //     size: version1Content.length,
-                // },
-
                 differences: this.calculateDifferences(
                     version1Content,
                     version2Content,
