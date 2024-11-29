@@ -123,6 +123,39 @@ class VersionControl {
             );
         }
     }
+
+    /**
+     * Show version history for a file
+     * @param {string} filename - The path to the file
+     * */
+    static async showHistory(filename: string): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+        const historyDir = path.join(
+            path.dirname(filename),
+            this.VAULT_HISTORY_DIR,
+        );
+        const logFile = path.join(historyDir, 'version_log.json');
+
+        try {
+            const logContent = await fs.readFile(logFile, 'utf8');
+            const versionLog = JSON.parse(logContent);
+
+            versionLog.forEach((entry: any, index: any) => {
+                loadingIndicator.start('');
+
+                loadingIndicator.stop(`
+${index + 1}. Version ID: ${entry.id}
+Timestamp: ${new Date(entry.timestamp).toLocaleString()}
+Message: ${entry.message}
+				`);
+            });
+        } catch (error) {
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `Could not retrieve version history: ${error}`,
+            );
+        }
+    }
 }
 
 /**
@@ -340,6 +373,11 @@ class VaultCLI {
 
                 await fs.writeFile(filename, decrypted);
 
+                await VersionControl.intiVersionControl(
+                    filename,
+                    `Decryption of ${path.basename(filename)}`,
+                );
+
                 loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
             }
         } catch (error: any) {
@@ -376,6 +414,11 @@ class VaultCLI {
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
+
+            await VersionControl.intiVersionControl(
+                filename,
+                `Viewed ${path.basename(filename)}`,
+            );
 
             loadingIndicator.stop();
             console.log(decrypted);
@@ -515,6 +558,11 @@ class VaultCLI {
 
             await fs.writeFile(filename, newOutput);
 
+            await VersionControl.intiVersionControl(
+                filename,
+                `Edited ${path.basename(filename)}`,
+            );
+
             loadingIndicator.stop(
                 '✔ File edited and re-encrypted successfully',
             );
@@ -532,10 +580,11 @@ class VaultCLI {
 Usage: vault <command> <file>
 
 Commands:
-  encrypt <path>    Encrypt a file
-  decrypt <path>    Decrypt a file
-  view <file>       View encrypted file contents
-  edit <file>		Edit and encrypted file
+  encrypt <path>    			Encrypt a file
+  decrypt <path>    			Decrypt a file
+  view <file>       			View encrypted file contents
+  edit <file>					Edit and encrypted file
+  history <file>				Show version history for an encrypted file
   help              Show this help message
 
 Examples:
@@ -545,6 +594,7 @@ Examples:
   vault decrypt secrets.txt test.json
   vault view secrets.txt
   vault edit secrets.txt
+  vault history secrets.txt
     `);
     }
 }
@@ -601,6 +651,16 @@ async function main() {
                 process.exit(1);
             }
             await VaultCLI.editFile(filenames[0]);
+            break;
+        case 'history':
+            if (filenames.length > 1) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    '✘ Error: History command supports only one file at a time',
+                );
+                process.exit(1);
+            }
+            await VersionControl.showHistory(filenames[0]);
             break;
         default:
             loadingIndicator.start('');
