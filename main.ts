@@ -94,7 +94,12 @@ class VersionControl {
             await fs.mkdir(fileHistoryDir, { recursive: true });
 
             const logFile = path.join(fileHistoryDir, 'version_log.json');
-            let versionLog: any[] = [];
+            let versionLog: {
+                id: string;
+                timeStamp: string;
+                message: string;
+                originalHealth: string;
+            }[] = [];
 
             try {
                 const existingLog = await fs.readFile(logFile, 'utf8');
@@ -115,22 +120,24 @@ class VersionControl {
             versionLog.push(versionEntry);
 
             versionLog.sort(
-                (a: any, b: any) =>
+                (a, b) =>
                     new Date(b.timeStamp).getTime() -
                     new Date(a.timeStamp).getTime(),
             );
 
             while (versionLog.length > maxVersions) {
                 const oldestVersion = versionLog.pop();
-                const versionFile = path.join(
-                    fileHistoryDir,
-                    `${oldestVersion.id}.enc`,
-                );
+                if (oldestVersion) {
+                    const versionFile = path.join(
+                        fileHistoryDir,
+                        `${oldestVersion.id}.enc`,
+                    );
 
-                try {
-                    await fs.unlink(versionFile);
-                } catch (error) {
-                    // Ignore errors if file doesn't exist
+                    try {
+                        await fs.unlink(versionFile);
+                    } catch (error) {
+                        // Ignore errors if file doesn't exist
+                    }
                 }
             }
 
@@ -163,9 +170,13 @@ class VersionControl {
 
         try {
             const logContent = await fs.readFile(logFile, 'utf8');
-            const versionLog = JSON.parse(logContent);
+            const versionLog: {
+                id: string;
+                timeStamp: string;
+                message: string;
+            }[] = JSON.parse(logContent);
 
-            versionLog.forEach((entry: any, index: any) => {
+            versionLog.forEach((entry, index) => {
                 loadingIndicator.start('');
 
                 const date = new Date(entry.timeStamp);
@@ -208,10 +219,11 @@ Message: ${entry.message}
 
         try {
             const logContent = await fs.readFile(logFile, 'utf8');
-            const versionLog = JSON.parse(logContent);
+            const versionLog: { id: string; timeStamp: string }[] =
+                JSON.parse(logContent);
 
             const versionEntry = versionLog.find(
-                (entry: any) => entry.id === versionId,
+                (entry) => entry.id === versionId,
             );
 
             if (!versionEntry) {
@@ -280,7 +292,7 @@ Message: ${entry.message}
         filename: string,
         version1Id: string,
         version2Id: string,
-    ): Promise<object> {
+    ): Promise<{ differences: string[] }> {
         const loadingIndicator = new LoadingIndicator();
         const fileBaseName = path.basename(filename);
         const fileHistoryDir = path.join(
@@ -293,7 +305,8 @@ Message: ${entry.message}
             const password = await VaultCLI.getPassword();
             const logFile = path.join(fileHistoryDir, 'version_log.json');
             const exitingLog = await fs.readFile(logFile, 'utf8');
-            const versionLog = JSON.parse(exitingLog);
+            const versionLog: { id: string; timeStamp: string }[] =
+                JSON.parse(exitingLog);
 
             const version1File = path.join(fileHistoryDir, `${version1Id}.enc`);
             const version2File = path.join(fileHistoryDir, `${version2Id}.enc`);
