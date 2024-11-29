@@ -10,18 +10,13 @@ Vault is secure, command-line file encryption tool that helps you protect sensit
     -   Decrypt file
     -   View Encrypted file contents
     -   Edit Encrypted file directly
+    -   **Version Management**:
+        -   View version history of a file
+        -   Restore a file to a specific version
 -   **Cross Platform**: Works on Linux, macOS, and Windows
 -   **Secure Password Handling**: Masked password input with advanced terminal control
 
 ### Installation
-
-##### Download Prebuilt Binaries
-
-Download the appropriate binary for your operating system from the Releases page:
-
--   Linux: `vault-linux`
--   macOS: `vault-macos`
--   Windows: `vault-win.exe`
 
 ##### Build from Source
 
@@ -44,29 +39,45 @@ npm install
 npm run build
 ```
 
+4. Make the script executable
+
+```bash
+chmod +x ./main.js
+```
+
 ### Usage
 
 ##### Basic Commands
 
 ```bash
 # Encrypt a file
-vault encrypt secrets.txt
+./main.js encrypt secrets.txt
 
 # Decrypt a file
-vault decrypt secrets.txt
+./main.js decrypt secrets.txt
 
 # View encrypted file contents
-vault view secrets.txt
+./main.js view secrets.txt
 
 # Edit an encrypted file (opens in your default editor)
-vault edit secrets.txt
+./main.js edit secrets.txt
 
-# Encrypt multi-file at once
-vault encrypt secrets.ts test.json
+# Encrypt multiple files at once
+./main.js encrypt secrets.txt test.json
 
-# Decrypt multi-file at once
-vault decrypt secrets.ts test.json
+# Decrypt multiple files at once
+./main.js decrypt secrets.txt test.json
 
+```
+
+##### Version Management
+
+```bash
+# View version history of a file
+./main.js history secrets.txt
+
+# Restore a file to a specific version
+./main.js restore secrets.txt <versionID>
 ```
 
 ##### Help
@@ -74,6 +85,14 @@ vault decrypt secrets.ts test.json
 ```bash
 vault help
 ```
+
+##### Download Prebuilt Binaries
+
+Download the appropriate binary for your operating system from the Releases page:
+
+-   Linux: `vault`
+-   macOS: `vault`
+-   Windows: `vault.exe`
 
 ### Security Details
 
