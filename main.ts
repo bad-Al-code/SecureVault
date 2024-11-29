@@ -80,6 +80,7 @@ class VersionControl {
     static async intiVersionControl(
         filename: string,
         commitMessage: string,
+        maxVersions: number = 10,
     ): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
         const fileBaseName = path.basename(filename);
@@ -112,6 +113,26 @@ class VersionControl {
             };
 
             versionLog.push(versionEntry);
+
+            versionLog.sort(
+                (a: any, b: any) =>
+                    new Date(b.timeStamp).getTime() -
+                    new Date(a.timeStamp).getTime(),
+            );
+
+            while (versionLog.length > maxVersions) {
+                const oldestVersion = versionLog.pop();
+                const versionFile = path.join(
+                    fileHistoryDir,
+                    `${oldestVersion.id}.enc`,
+                );
+
+                try {
+                    await fs.unlink(versionFile);
+                } catch (error) {
+                    // Ignore errors if file doesn't exist
+                }
+            }
 
             await fs.writeFile(logFile, JSON.stringify(versionLog, null, 2));
 
@@ -311,53 +332,6 @@ Message: ${entry.message}
             );
 
             throw error;
-        }
-    }
-
-    /**
-     * Cleans up old versions of a file by retaining only the most recent versions.
-     *
-     * @param {string} filename - The name of the file whose versions are being cleaned up.
-     * @param {number} [maxVersions=10] - The maximum number of versions to retain. Defaults to 10.
-     * @returns {Promise<void>} Resolves when old versions have been successfully removed.
-     * @throws Will throw an error if reading or deleting version files fails.
-     */
-    static async cleanupOldVersions(
-        filename: string,
-        maxVersions: number = 10,
-    ): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-        const fileBaseName = path.basename(filename);
-        const fileHistoryDir = path.join(
-            path.dirname(filename),
-            this.VAULT_HISTORY_DIR,
-            fileBaseName,
-        );
-
-        const logFile = path.join(fileHistoryDir, 'version_log.json');
-
-        try {
-            const existingLog = await fs.readFile(logFile, 'utf8');
-            let versionLog = JSON.parse(existingLog);
-
-            versionLog.sort(
-                (a: any, b: any) =>
-                    new Date(b.timeStamp).getTime() -
-                    new Date(a.timeStamp).getTime(),
-            );
-
-            while (versionLog.length > maxVersions) {
-                const oldestVersion = versionLog.pop();
-                const versionFile = path.join(
-                    fileHistoryDir,
-                    `${oldestVersion.id}.enc`,
-                );
-
-                await fs.unlink(versionFile);
-            }
-        } catch (error: any) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(`Version cleanup failed: ${error.message}`);
         }
     }
 }
@@ -891,22 +865,6 @@ async function main() {
             loadingIndicator.start('');
             loadingIndicator.stop(
                 `Comparison Result: ${JSON.stringify(result, null, 2)}`,
-            );
-            break;
-        case 'cleanup':
-            if (filenames.length > 2) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: Cleanup command supports a maximum of two arguments (filename and maxVersions)',
-                );
-                process.exit(1);
-            }
-            const cleanupFile = filenames[0];
-            const maxVersions = filenames[1] ? parseInt(filenames[1], 10) : 10;
-            await VersionControl.cleanupOldVersions(cleanupFile, maxVersions);
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `✔ Old versions cleaned up, retaining a maximum of ${maxVersions} versions.`,
             );
             break;
 
