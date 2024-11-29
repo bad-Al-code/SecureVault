@@ -165,7 +165,7 @@ Message: ${entry.message}
     /**
      * Restore a file to a specific version
      * @param {string} filename - The path to the file
-     * @param {string} versionID - The ID of the version to restore
+     * @param {string} versionId - The ID of the version to restore
      * */
     static async restoreVersion(
         filename: string,
@@ -180,7 +180,6 @@ Message: ${entry.message}
         const versionFile = path.join(historyDir, `${versionId}.enc`);
 
         try {
-            loadingIndicator.start('');
             const logContent = await fs.readFile(logFile, 'utf8');
             const versionLog = JSON.parse(logContent);
 
@@ -192,7 +191,23 @@ Message: ${entry.message}
                 throw new Error('Version not found');
             }
 
-            await fs.copyFile(versionFile, filename);
+            const password = await VaultCLI.getPassword();
+
+            loadingIndicator.start('');
+            const encryptedData = await fs.readFile(versionFile, 'utf8');
+            const lines = encryptedData.split('\n');
+
+            const salt = Buffer.from(lines[1], 'hex');
+            const iv = Buffer.from(lines[2], 'hex');
+            const encrypted = lines[3];
+
+            const key = await VaultCLI.deriveKey(password, salt);
+
+            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+            decrypted += decipher.final('utf8');
+
+            await fs.writeFile(filename, decrypted);
 
             loadingIndicator.stop(
                 `Restored version ${versionId} from ${versionEntry.timeStamp}`,
@@ -239,10 +254,7 @@ class VaultCLI {
      * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
      * @throws {Error} If key derivation fails.
      */
-    private static async deriveKey(
-        password: string,
-        salt: Buffer,
-    ): Promise<Buffer> {
+    static async deriveKey(password: string, salt: Buffer): Promise<Buffer> {
         return new Promise((resolve, reject) => {
             crypto.pbkdf2(
                 password,
@@ -265,9 +277,7 @@ class VaultCLI {
      * @returns {Promise<string>} - A promise that resolves to the entered password.
      * @throws {Error} If password confirmation fails
      */
-    private static async getPassword(
-        confirm: boolean = false,
-    ): Promise<string> {
+    static async getPassword(confirm: boolean = false): Promise<string> {
         const stdin = process.stdin;
         const stdout = process.stdout;
 
