@@ -143,9 +143,14 @@ class VersionControl {
             versionLog.forEach((entry: any, index: any) => {
                 loadingIndicator.start('');
 
+                const date = new Date(entry.timeStamp);
+                const formattedDate = isNaN(date.getTime())
+                    ? 'Invalid Date'
+                    : date.toLocaleString();
+
                 loadingIndicator.stop(`
 ${index + 1}. Version ID: ${entry.id}
-Timestamp: ${new Date(entry.timestamp).toLocaleString()}
+Timestamp: ${formattedDate}
 Message: ${entry.message}
 				`);
             });
