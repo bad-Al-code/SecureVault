@@ -6,6 +6,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { error } from 'node:console';
+import { validateHeaderName } from 'node:http';
 
 /*
  * Utility class to display a spineer-based loading loadingIndicator
@@ -817,110 +819,142 @@ Examples:
     }
 }
 
+/**
+ * Enum representing available commands for the Vault CLI
+ */
+enum VaultCommand {
+    ENCRYPT = 'encrypt',
+    DECRYPT = 'decrypt',
+    VIEW = 'view',
+    EDIT = 'edit',
+    HISTORY = 'history',
+    RESTORE = 'restore',
+    COMPARE = 'compare',
+    HELP = 'help',
+}
+
+/**
+ * Validates command arguments based on the specific requirements of each command
+ *
+ * @param {VaultCommand} command - The command to be executed
+ * @param {string[]} filenames - Array of filenames passed to the command
+ * @throws {Error} If the number of filenames doesn't match the command's requirements
+ */
+function validateArguments(command: VaultCommand, filenames: string[]): void {
+    switch (command) {
+        case VaultCommand.VIEW:
+        case VaultCommand.EDIT:
+        case VaultCommand.HISTORY:
+            if (filenames.length !== 1) {
+                throw new Error(
+                    `${command} command supports only one file at a time`,
+                );
+            }
+            break;
+
+        case VaultCommand.RESTORE:
+            if (filenames.length !== 2) {
+                throw new Error(
+                    'Restore command requires a filename and a version ID',
+                );
+            }
+            break;
+
+        case VaultCommand.COMPARE:
+            if (filenames.length !== 3) {
+                throw new Error(
+                    'Compare command requires a filename and two version IDs',
+                );
+            }
+            break;
+
+        case VaultCommand.ENCRYPT:
+        case VaultCommand.DECRYPT:
+            if (filenames.length < 1) {
+                throw new Error(
+                    `${command} command requires at least one filename`,
+                );
+            }
+            break;
+    }
+}
+
+/**
+ * Main entry point for the Vault CLI application
+ *
+ * Processes command-line arguments, validates them, and executes the corresponding command
+ * Handles error scenarios and displays help information when needed
+ *
+ * @async
+ * @throws {Error} For invalid commands or argument configurations
+ */
 async function main() {
     const args = process.argv.slice(2);
     const loadingIndicator = new LoadingIndicator();
 
-    if (
-        args.length < 1 ||
-        args[0] === 'help' ||
-        args[0] === '--help' ||
-        args[0] === '-h'
-    ) {
-        VaultCLI.showHelp();
-        process.exit(0);
-    }
+    try {
+        if (
+            args.length < 1 ||
+            args[0] === 'help' ||
+            args[0] === '--help' ||
+            args[0] === '-h'
+        ) {
+            VaultCLI.showHelp();
+            process.exit(0);
+        }
 
-    if (args.length < 2) {
+        const command = args[0] as VaultCommand;
+        const filenames = args.slice(1);
+
+        if (!Object.values(VaultCommand).includes(command)) {
+            throw new Error(`Unknown command: ${command}`);
+        }
+
+        validateArguments(command, filenames);
+
+        switch (command) {
+            case VaultCommand.ENCRYPT:
+                await VaultCLI.encryptFile(filenames);
+                break;
+            case VaultCommand.DECRYPT:
+                await VaultCLI.decryptFile(filenames);
+                break;
+            case VaultCommand.VIEW:
+                await VaultCLI.viewFile(filenames[0]);
+                break;
+            case VaultCommand.EDIT:
+                await VaultCLI.editFile(filenames[0]);
+                break;
+            case VaultCommand.HISTORY:
+                await VersionControl.showHistory(filenames[0]);
+                break;
+            case VaultCommand.RESTORE:
+                await VersionControl.restoreVersion(filenames[0], filenames[1]);
+                break;
+            case VaultCommand.COMPARE:
+                const result = await VersionControl.compareVersions(
+                    filenames[0],
+                    filenames[1],
+                    filenames[2],
+                );
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    `Comparison Result: ${JSON.stringify(result, null, 2)}`,
+                );
+                break;
+        }
+    } catch (error: unknown) {
+        const errorMessage =
+            error instanceof Error ? error.message : String(error);
         loadingIndicator.start('');
-        loadingIndicator.stop(
-            '✘ Error: Please provide both command and filename',
-        );
+        loadingIndicator.stop(`✘ Error: ${errorMessage}`);
         VaultCLI.showHelp();
         process.exit(1);
     }
-
-    const command = args[0];
-    const filenames = args.slice(1);
-
-    switch (command) {
-        case 'encrypt':
-            await VaultCLI.encryptFile(filenames);
-            break;
-        case 'decrypt':
-            await VaultCLI.decryptFile(filenames);
-            break;
-        case 'view':
-            if (filenames.length > 1) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: View command supports only one file at a time',
-                );
-                process.exit(1);
-            }
-            await VaultCLI.viewFile(filenames[0]);
-            break;
-        case 'edit':
-            if (filenames.length > 1) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: Edit command supports only one file at a time',
-                );
-                process.exit(1);
-            }
-            await VaultCLI.editFile(filenames[0]);
-            break;
-        case 'history':
-            if (filenames.length > 1) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: History command supports only one file at a time',
-                );
-                process.exit(1);
-            }
-            await VersionControl.showHistory(filenames[0]);
-            break;
-        case 'restore':
-            if (filenames.length > 2) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: Restire command supports only two args at a time',
-                );
-                process.exit(1);
-            }
-            await VersionControl.restoreVersion(filenames[0], filenames[1]);
-            break;
-        case 'compare':
-            if (filenames.length !== 3) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    '✘ Error: Compare command requires a filename and two version IDs',
-                );
-                process.exit(1);
-            }
-            const filename = filenames[0];
-            const version1Id = filenames[1];
-            const version2Id = filenames[2];
-            const result = await VersionControl.compareVersions(
-                filename,
-                version1Id,
-                version2Id,
-            );
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `Comparison Result: ${JSON.stringify(result, null, 2)}`,
-            );
-            break;
-
-        default:
-            loadingIndicator.start('');
-            loadingIndicator.stop('✘ Error: Unknown command');
-            VaultCLI.showHelp();
-            process.exit(1);
-    }
 }
 
+// Execute main function and handle any unhandled errors
 main().catch((error) => {
-    console.error('Error:', error.message);
+    console.error('Unhandled error:', error);
     process.exit(1);
 });
