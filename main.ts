@@ -468,21 +468,34 @@ class VaultCLI {
      */
     static async encryptFile(filenames: string[]): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
+        const encryptedFiles: string[] = [];
+        const unencryptedFiles: string[] = [];
 
         try {
             for (const filename of filenames) {
                 if (await this.isEncrypted(filename)) {
-                    loadingIndicator.start('');
-                    loadingIndicator.stop(
-                        `✘ Error:  ${filename} File is already encrypted`,
-                    );
-                    process.exit(1);
+                    encryptedFiles.push(filename);
+                } else {
+                    unencryptedFiles.push(filename);
                 }
+            }
+
+            if (encryptedFiles.length > 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    `⚠️ Skipping already encrypted files: ${encryptedFiles.join(', ')}`,
+                );
+            }
+
+            if (unencryptedFiles.length === 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ No files to encrypt');
+                process.exit(0);
             }
 
             const password = await this.getPassword(true);
 
-            for (const filename of filenames) {
+            for (const filename of unencryptedFiles) {
                 loadingIndicator.start(`Encrypting ${filename}...`);
                 const salt = crypto.randomBytes(this.SALT_SIZE);
                 const iv = crypto.randomBytes(16);
@@ -511,6 +524,7 @@ class VaultCLI {
                 loadingIndicator.stop(`✔ ${filename} encrypted successfully`);
             }
         } catch (error: any) {
+            loadingIndicator.start('');
             loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
             process.exit(1);
         }
@@ -522,17 +536,32 @@ class VaultCLI {
      */
     static async decryptFile(filenames: string[]): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
+        const encryptedFiles: string[] = [];
+        const unencryptedFiles: string[] = [];
 
         try {
             for (const filename of filenames) {
                 const encryptedData = await fs.readFile(filename, 'utf8');
                 const lines = encryptedData.split('\n');
 
-                if (lines[0] !== this.HEADER.trim()) {
-                    loadingIndicator.start('');
-                    loadingIndicator.stop('✘ Error: File is not encrypted');
-                    process.exit(1);
+                if (lines[0] === this.HEADER.trim()) {
+                    encryptedFiles.push(filename);
+                } else {
+                    unencryptedFiles.push(filename);
                 }
+            }
+
+            if (unencryptedFiles.length > 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    `⚠️ Skipping non-encrypted files: ${unencryptedFiles.join(', ')}`,
+                );
+            }
+
+            if (encryptedFiles.length === 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop('✘ No encrypted files to decrypt');
+                process.exit(0);
             }
 
             const password = await this.getPassword();
