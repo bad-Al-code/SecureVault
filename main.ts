@@ -772,6 +772,7 @@ Commands:
   edit <file>					Edit and encrypted file
   history <file>				Show version history for an encrypted file
   restore <file> <versionId> 	Restore a specific version of an encrypted file
+  compare <file> <version1Id> <version2Id> 		Compare between two versions of an encrypted file
   help              Show this help message
 
 Examples:
@@ -782,6 +783,7 @@ Examples:
   vault view secrets.txt
   vault edit secrets.txt
   vault history secrets.txt
+  vault compare secrets.txt 607f3f729345c2ba6aa075b124ca313a aacc8981bf16cf76ada50a4ede8cc937
     `);
     }
 }
