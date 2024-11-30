@@ -353,21 +353,151 @@ Message: ${entry.message}
  * Core class for handling file encryption, decryption, and editing operations.
  */
 class VaultCLI {
-    private static readonly SALT_SIZE = 32;
-    private static readonly ITERATIONS = 10000;
-    private static readonly KEY_LENGTH = 32;
-    private static readonly HEADER =
-        '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
+    private static readonly CONFIG = {
+        SALT_SIZE: 32,
+        ITERATIONS: 10000,
+        KEY_LENGTH: 32,
+        HEADER: '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n',
+    };
 
     /**
-     * Check if a file is already encrypted
+     * Perform common file encryption/decryption operations
+     * @param {string[]} filenames - Array of file paths to process
+     * @param {boolean} isEncryption - Whether to encrypt or decrypt
+     */
+    private static async processFiles(
+        filenames: string[],
+        isEncryption: boolean,
+    ): Promise<void> {
+        const loadingIndicator = new LoadingIndicator();
+        const processedFiles: string[] = [];
+        const skippedFiles: string[] = [];
+
+        try {
+            for (const filename of filenames) {
+                const isCurrentState = isEncryption
+                    ? await this.isEncrypted(filename)
+                    : !(await this.isEncrypted(filename));
+
+                if (isCurrentState) {
+                    skippedFiles.push(filename);
+                } else {
+                    processedFiles.push(filename);
+                }
+            }
+
+            if (skippedFiles.length > 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    `⚠️ Skipping ${isEncryption ? 'already encrypted' : 'non-encrypted'} files: ${skippedFiles.join(', ')}`,
+                );
+            }
+
+            if (processedFiles.length === 0) {
+                loadingIndicator.start('');
+                loadingIndicator.stop(
+                    `✘ No files to ${isEncryption ? 'encrypt' : 'decrypt'}`,
+                );
+                process.exit(0);
+            }
+
+            const password = await this.getPassword(isEncryption);
+
+            for (const filename of processedFiles) {
+                loadingIndicator.start(
+                    `${isEncryption ? 'Encrypting' : 'Decrypting'} ${filename}...`,
+                );
+
+                const fileContent = await fs.readFile(filename, 'utf8');
+                const lines = fileContent.split('\n');
+
+                const salt = isEncryption
+                    ? crypto.randomBytes(this.CONFIG.SALT_SIZE)
+                    : Buffer.from(lines[1], 'hex');
+
+                const iv = isEncryption
+                    ? crypto.randomBytes(16)
+                    : Buffer.from(lines[2], 'hex');
+
+                const key = await this.deriveKey(password, salt);
+
+                const processedContent = isEncryption
+                    ? this.encryptContent(fileContent, key, salt, iv)
+                    : this.decryptContent(lines[3], key, iv);
+
+                await fs.writeFile(filename, processedContent);
+
+                await VersionControl.intiVersionControl(
+                    filename,
+                    `${isEncryption ? 'Initial encryption' : 'Decryption'} of ${path.basename(filename)}`,
+                );
+
+                loadingIndicator.stop(
+                    `✔ ${filename} ${isEncryption ? 'encrypted' : 'decrypted'} successfully`,
+                );
+            }
+        } catch (error: any) {
+            loadingIndicator.start('');
+            loadingIndicator.stop(
+                `✘ ${isEncryption ? 'Encryption' : 'Decryption'} failed: ${error.message}`,
+            );
+            process.exit(1);
+        }
+    }
+
+    /**
+     * Encrypt file content
+     * @param {string} content - File content to encrypt
+     * @param {Buffer} key - Encryption key
+     * @param {Buffer} salt - Cryptographic salt
+     * @param {Buffer} iv - Initialization vector
+     * @returns {string} Encrypted file content
+     */
+    private static encryptContent(
+        content: string,
+        key: Buffer,
+        salt: Buffer,
+        iv: Buffer,
+    ): string {
+        const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
+        let encrypted = cipher.update(content, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+
+        return [
+            this.CONFIG.HEADER.trim(),
+            salt.toString('hex'),
+            iv.toString('hex'),
+            encrypted,
+        ].join('\n');
+    }
+
+    /**
+     * Decrypt file content
+     * @param {string} encrypted - Encrypted content
+     * @param {Buffer} key - Decryption key
+     * @param {Buffer} iv - Initialization vector
+     * @returns {string} Decrypted file content
+     */
+    private static decryptContent(
+        encrypted: string,
+        key: Buffer,
+        iv: Buffer,
+    ): string {
+        const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+        let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    }
+
+    /**
+     * Check if a file is encrypted
      * @param {string} filename - The path to the file to check
      * @returns {Promise<boolean>} - Whether the file is encrypted
-     * */
+     */
     private static async isEncrypted(filename: string): Promise<boolean> {
         try {
             const content = await fs.readFile(filename, 'utf8');
-            return content.startsWith(this.HEADER.trim());
+            return content.startsWith(this.CONFIG.HEADER.trim());
         } catch (error) {
             return false;
         }
@@ -375,19 +505,17 @@ class VaultCLI {
 
     /**
      * Derives a cryptographic key from a password and salt using PBKDF2.
-     * @private
      * @param {string} password - The password to derive the key from.
      * @param {Buffer} salt - The cryptographic salt.
      * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
-     * @throws {Error} If key derivation fails.
      */
     static async deriveKey(password: string, salt: Buffer): Promise<Buffer> {
         return new Promise((resolve, reject) => {
             crypto.pbkdf2(
                 password,
                 salt,
-                this.ITERATIONS,
-                this.KEY_LENGTH,
+                this.CONFIG.ITERATIONS,
+                this.CONFIG.KEY_LENGTH,
                 'sha256',
                 (err, derivedKey) => {
                     if (err) reject(err);
@@ -399,10 +527,8 @@ class VaultCLI {
 
     /**
      * Reads a password securely from the terminal.
-     * @private
      * @param {boolean} [confirm=false] - Whether to prompt for password confirmation.
      * @returns {Promise<string>} - A promise that resolves to the entered password.
-     * @throws {Error} If password confirmation fails
      */
     static async getPassword(confirm: boolean = false): Promise<string> {
         const stdin = process.stdin;
@@ -419,22 +545,18 @@ class VaultCLI {
 
                 const onData = (char: string) => {
                     if (char === '\u0003') {
-                        // Ctrl+C
                         stdout.write('\n');
                         process.exit(1);
                     } else if (char === '\b' || char === '\x7f') {
-                        // Backspace Key
                         if (password.length > 0) {
                             password = password.slice(0, -1);
                             stdout.write('\b \b');
                         }
                     } else if (char === '\u0015') {
-                        // Ctrl+U (Erase all)
                         password = '';
                         stdout.write('\r' + ' '.repeat(password.length) + '\r');
                         stdout.write(prompt);
                     } else if (char === '\r' || char === '\n') {
-                        // Enter Key
                         stdout.write('\n');
                         stdin.setRawMode(false);
                         stdin.pause();
@@ -463,142 +585,19 @@ class VaultCLI {
     }
 
     /**
-     * Encrypts the contents of a file.
-     * @param {string[]} filenames - Array of file path to encrypt
+     * Encrypts the contents of files.
+     * @param {string[]} filenames - Array of file paths to encrypt
      */
     static async encryptFile(filenames: string[]): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-        const encryptedFiles: string[] = [];
-        const unencryptedFiles: string[] = [];
-
-        try {
-            for (const filename of filenames) {
-                if (await this.isEncrypted(filename)) {
-                    encryptedFiles.push(filename);
-                } else {
-                    unencryptedFiles.push(filename);
-                }
-            }
-
-            if (encryptedFiles.length > 0) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    `⚠️ Skipping already encrypted files: ${encryptedFiles.join(', ')}`,
-                );
-            }
-
-            if (unencryptedFiles.length === 0) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ No files to encrypt');
-                process.exit(0);
-            }
-
-            const password = await this.getPassword(true);
-
-            for (const filename of unencryptedFiles) {
-                loadingIndicator.start(`Encrypting ${filename}...`);
-                const salt = crypto.randomBytes(this.SALT_SIZE);
-                const iv = crypto.randomBytes(16);
-
-                const key = await this.deriveKey(password, salt);
-                const data = await fs.readFile(filename, 'utf8');
-
-                const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-                let encrypted = cipher.update(data, 'utf8', 'hex');
-                encrypted += cipher.final('hex');
-
-                const output = [
-                    this.HEADER.trim(),
-                    salt.toString('hex'),
-                    iv.toString('hex'),
-                    encrypted,
-                ].join('\n');
-
-                await fs.writeFile(filename, output);
-
-                await VersionControl.intiVersionControl(
-                    filename,
-                    `Initial encryption of ${path.basename(filename)}`,
-                );
-
-                loadingIndicator.stop(`✔ ${filename} encrypted successfully`);
-            }
-        } catch (error: any) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
-            process.exit(1);
-        }
+        return this.processFiles(filenames, true);
     }
 
     /**
-     * Decrypts the contents of a file.
-     * @param {string[]} filenames - Array of path to decrypt
+     * Decrypts the contents of files.
+     * @param {string[]} filenames - Array of file paths to decrypt
      */
     static async decryptFile(filenames: string[]): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-        const encryptedFiles: string[] = [];
-        const unencryptedFiles: string[] = [];
-
-        try {
-            for (const filename of filenames) {
-                const encryptedData = await fs.readFile(filename, 'utf8');
-                const lines = encryptedData.split('\n');
-
-                if (lines[0] === this.HEADER.trim()) {
-                    encryptedFiles.push(filename);
-                } else {
-                    unencryptedFiles.push(filename);
-                }
-            }
-
-            if (unencryptedFiles.length > 0) {
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    `⚠️ Skipping non-encrypted files: ${unencryptedFiles.join(', ')}`,
-                );
-            }
-
-            if (encryptedFiles.length === 0) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ No encrypted files to decrypt');
-                process.exit(0);
-            }
-
-            const password = await this.getPassword();
-
-            for (const filename of filenames) {
-                loadingIndicator.start(`Decrypting ${filename}...`);
-
-                const encryptedData = await fs.readFile(filename, 'utf8');
-                const lines = encryptedData.split('\n');
-
-                const salt = Buffer.from(lines[1], 'hex');
-                const iv = Buffer.from(lines[2], 'hex');
-                const encrypted = lines[3];
-
-                const key = await this.deriveKey(password, salt);
-
-                const decipher = crypto.createDecipheriv(
-                    'aes-256-cbc',
-                    key,
-                    iv,
-                );
-                let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-                decrypted += decipher.final('utf8');
-
-                await fs.writeFile(filename, decrypted);
-
-                await VersionControl.intiVersionControl(
-                    filename,
-                    `Decryption of ${path.basename(filename)}`,
-                );
-
-                loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
-            }
-        } catch (error: any) {
-            loadingIndicator.stop(`✘ Decryption failed: ${error.message}`);
-            process.exit(1);
-        }
+        return this.processFiles(filenames, false);
     }
 
     /**
@@ -606,15 +605,35 @@ class VaultCLI {
      * @param {string} filename - The path to the file to view.
      */
     static async viewFile(filename: string): Promise<void> {
+        return this.processFileOperation(filename, 'view');
+    }
+
+    /**
+     * Edit the contents of a file.
+     * @param {string} filename - The path to the file to edit.
+     */
+    static async editFile(filename: string): Promise<void> {
+        return this.processFileOperation(filename, 'edit');
+    }
+
+    /**
+     * Common method for file operations that require decryption
+     * @param {string} filename - The path to the file to process
+     * @param {string} operation - Type of operation (view or edit)
+     */
+    private static async processFileOperation(
+        filename: string,
+        operation: 'view' | 'edit',
+    ): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
 
         try {
             const encryptedData = await fs.readFile(filename, 'utf8');
             const lines = encryptedData.split('\n');
 
-            if (lines[0] !== this.HEADER.trim()) {
+            if (lines[0] !== this.CONFIG.HEADER.trim()) {
                 loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is not encrypted');
+                loadingIndicator.stop(`✘ Error: File is not encrypted`);
                 process.exit(1);
             }
 
@@ -625,30 +644,64 @@ class VaultCLI {
             const encrypted = lines[3];
 
             const key = await this.deriveKey(password, salt);
+            const decrypted = this.decryptContent(encrypted, key, iv);
 
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
+            await fs.writeFile(filename, decrypted);
+
+            if (operation === 'view') {
+                loadingIndicator.stop();
+                console.log(decrypted);
+                return;
+            }
+
+            // Edit operation
+            const editor = this.selectEditor();
+            const editProcess = spawn(
+                editor.command,
+                [...editor.args, filename],
+                { stdio: 'inherit' },
+            );
+
+            await new Promise((resolve, reject) => {
+                editProcess.on('close', (code) => {
+                    if (code === 0) resolve(true);
+                    else reject(new Error('Edit process failed'));
+                });
+            });
+
+            loadingIndicator.start('Re-encrypting edited file...');
+
+            const editedContent = await fs.readFile(filename, 'utf8');
+            const newSalt = crypto.randomBytes(this.CONFIG.SALT_SIZE);
+            const newIv = crypto.randomBytes(16);
+            const newKey = await this.deriveKey(password, newSalt);
+
+            const reEncryptedContent = this.encryptContent(
+                editedContent,
+                newKey,
+                newSalt,
+                newIv,
+            );
+            await fs.writeFile(filename, reEncryptedContent);
 
             await VersionControl.intiVersionControl(
                 filename,
-                `Viewed ${path.basename(filename)}`,
+                `Edited ${path.basename(filename)}`,
             );
 
-            loadingIndicator.stop();
-            console.log(decrypted);
+            loadingIndicator.stop(
+                '✔ File edited and re-encrypted successfully',
+            );
         } catch (error: any) {
-            loadingIndicator.stop(`✘ View failed: ${error.message}`);
+            loadingIndicator.stop(`✘ ${operation} failed: ${error.message}`);
             process.exit(1);
         }
     }
 
     /**
-     * Select the most approriate text editor based on OS and environment.
+     * Select the most appropriate text editor based on OS and environment.
      * @returns {Object} An object containing the editor command and its arguments
-     * @property {string} command - The executable command for the text editor
-     * @property {string[]} args - Additional arguments for the editor command
-     * */
+     */
     private static selectEditor(): { command: string; args: string[] } {
         const envEditor = process.env.EDITOR;
         if (envEditor) {
@@ -658,12 +711,12 @@ class VaultCLI {
         const platform = os.platform();
         switch (platform) {
             case 'win32':
-                const windowsEditor = [
+                const windowsEditors = [
                     { command: 'notepad.exe', args: [] },
                     { command: 'code.cmd', args: ['-w'] },
                     { command: 'notepad++.exe', args: [] },
                 ];
-                for (const editor of windowsEditor) {
+                for (const editor of windowsEditors) {
                     try {
                         execSync(`where ${editor.command}`, {
                             stdio: 'ignore',
@@ -708,86 +761,6 @@ class VaultCLI {
     }
 
     /**
-     * Edit the contents of a file.
-     * @param {string} filename - The path to the file to edit.
-     */
-    static async editFile(filename: string): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-
-        try {
-            const encryptedData = await fs.readFile(filename, 'utf8');
-            const lines = encryptedData.split('\n');
-
-            if (lines[0] !== this.HEADER.trim()) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is not encrypted');
-                process.exit(1);
-            }
-
-            const password = await this.getPassword();
-
-            const salt = Buffer.from(lines[1], 'hex');
-            const iv = Buffer.from(lines[2], 'hex');
-            const encrypted = lines[3];
-
-            const key = await this.deriveKey(password, salt);
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final(`utf8`);
-
-            await fs.writeFile(filename, decrypted);
-
-            const editor = this.selectEditor();
-            const editProcess = spawn(
-                editor.command,
-                [...editor.args, filename],
-                { stdio: 'inherit' },
-            );
-
-            await new Promise((resolve, reject) => {
-                editProcess.on('close', (code) => {
-                    if (code === 0) resolve(true);
-                    else reject(new Error('Edit process failed'));
-                });
-            });
-
-            loadingIndicator.start('Re-encrypting edited file...');
-
-            const editedContent = await fs.readFile(filename, 'utf8');
-
-            const newSalt = crypto.randomBytes(this.SALT_SIZE);
-            const newIv = crypto.randomBytes(16);
-
-            const newKey = await this.deriveKey(password, newSalt);
-
-            const cipher = crypto.createCipheriv('aes-256-cbc', newKey, newIv);
-            let newEncrypted = cipher.update(editedContent, 'utf8', 'hex');
-            newEncrypted += cipher.final('hex');
-
-            const newOutput = [
-                this.HEADER.trim(),
-                newSalt.toString('hex'),
-                newIv.toString('hex'),
-                newEncrypted,
-            ].join(`\n`);
-
-            await fs.writeFile(filename, newOutput);
-
-            await VersionControl.intiVersionControl(
-                filename,
-                `Edited ${path.basename(filename)}`,
-            );
-
-            loadingIndicator.stop(
-                '✔ File edited and re-encrypted successfully',
-            );
-        } catch (error: any) {
-            loadingIndicator.stop(`✘ Edit failed: ${error.message}`);
-            process.exit(1);
-        }
-    }
-
-    /**
      * Displays the CLI usage help.
      */
     static showHelp(): void {
@@ -816,7 +789,6 @@ Examples:
     `);
     }
 }
-
 async function main() {
     const args = process.argv.slice(2);
     const loadingIndicator = new LoadingIndicator();
