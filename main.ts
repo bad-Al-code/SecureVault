@@ -6,8 +6,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { execSync, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { error } from 'node:console';
-import { validateHeaderName } from 'node:http';
 
 /*
  * Utility class to display a spineer-based loading loadingIndicator
@@ -406,7 +404,7 @@ class VaultCLI {
      * @returns {Promise<string>} - A promise that resolves to the entered password.
      * @throws {Error} If password confirmation fails
      */
-    static async getPassword(confirm: boolean = false): Promise<string> {
+    static async getPassword(isNewVault: boolean = false): Promise<string> {
         const stdin = process.stdin;
         const stdout = process.stdout;
 
@@ -451,9 +449,11 @@ class VaultCLI {
             });
         };
 
-        const password = await question('Vault password: ');
+        const password = await question(
+            isNewVault ? 'New vault password: ' : 'Vault password: ',
+        );
 
-        if (confirm) {
+        if (isNewVault) {
             const confirmPassword = await question('Confirm Vault password: ');
             if (password !== confirmPassword) {
                 console.error('Error: Passwords do not match');
