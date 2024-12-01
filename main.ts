@@ -356,8 +356,7 @@ class VaultCLI {
     private static readonly SALT_SIZE = 32;
     private static readonly ITERATIONS = 10000;
     private static readonly KEY_LENGTH = 32;
-    private static readonly HEADER =
-        '$VAULTCLI;VERSION=1.0;CIPHER=AES-256-CBC\n';
+    private static readonly HEADER = 'VAULT;\n';
 
     /**
      * Check if a file is already encrypted
@@ -590,11 +589,6 @@ class VaultCLI {
 
                 await fs.writeFile(filename, decrypted);
 
-                await VersionControl.intiVersionControl(
-                    filename,
-                    `Decryption of ${path.basename(filename)}`,
-                );
-
                 loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
             }
         } catch (error: any) {
@@ -631,11 +625,6 @@ class VaultCLI {
             const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
             let decrypted = decipher.update(encrypted, 'hex', 'utf8');
             decrypted += decipher.final('utf8');
-
-            await VersionControl.intiVersionControl(
-                filename,
-                `Viewed ${path.basename(filename)}`,
-            );
 
             loadingIndicator.stop();
             console.log(decrypted);
