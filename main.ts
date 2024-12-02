@@ -578,7 +578,7 @@ class VaultCLI {
     /**
      * Reads a password securely from the terminal.
      * @private
-     * @param {boolean} [confirm=false] - Whether to prompt for password confirmation.
+     * @param {boolean} [isNewVault=false] - Whether to prompt for password confirmation.
      * @returns {Promise<string>} - A promise that resolves to the entered password.
      * @throws {Error} If password confirmation fails
      */
@@ -627,9 +627,19 @@ class VaultCLI {
             });
         };
 
-        const password = await question(
-            isNewVault ? 'New vault password: ' : 'Vault password: ',
-        );
+        let password: string;
+        while (true) {
+            password = await question(
+                isNewVault ? 'New Vault Password: ' : 'Vault Password: ',
+            );
+
+            try {
+                PasswordStrengthMeter.validatePassword(password);
+                break;
+            } catch (error: any) {
+                console.error(error.message);
+            }
+        }
 
         if (isNewVault) {
             const confirmPassword = await question('Confirm Vault password: ');
