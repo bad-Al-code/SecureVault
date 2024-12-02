@@ -675,6 +675,7 @@ class VaultCLI {
             case 'linux':
                 const linuxEditors = [
                     { command: 'vim', args: [] },
+                    { command: 'code', args: ['-w'] },
                     { command: 'nano', args: [] },
                     { command: 'emacs', args: [] },
                 ];
