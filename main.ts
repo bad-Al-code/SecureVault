@@ -350,6 +350,185 @@ Message: ${entry.message}
 }
 
 /**
+ * Represnt the result of password stregth
+ */
+interface PasswordStrengthResult {
+    score: number;
+    feedback: string[];
+    isStrong: boolean;
+}
+
+/**
+ * Password strngth evaluation Utility
+ */
+class PasswordStrengthMeter {
+    private static readonly MIN_LENGTH = 4;
+    private static readonly KEYBOARD_PATTERNS = [
+        'qwerty',
+        'asdfgh',
+        'zxcvbn',
+        '123456',
+        'qazwsx',
+    ];
+    private static readonly COMMON_PASSWORDS = [
+        'password',
+        '123456',
+        'qwerty',
+        'admin',
+        'letmein',
+        'welcome',
+        'monkey',
+        'password1',
+        'abc123',
+        'passw0rd',
+        'login',
+        'secret',
+    ];
+
+    /**
+     * Calucalte entropy of the password
+     * @private
+     * @param {string} password - Password to check
+     * @returns {number} Entripy score
+     */
+    private static calculateEntropy(password: string): number {
+        const charsets: { [key: string]: number } = {
+            lowercase: 26,
+            uppercase: 26,
+            numbers: 10,
+            symbols: 32,
+        };
+
+        let possibleChars = 0;
+        // CHATGPT
+        if (/[a-z]/.test(password)) possibleChars += charsets.lowercase;
+        if (/[A-Z]/.test(password)) possibleChars += charsets.uppercase;
+        if (/[0-9]/.test(password)) possibleChars += charsets.numbers;
+        if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password))
+            possibleChars += charsets.symbols;
+
+        return Math.log2(Math.pow(possibleChars, password.length));
+    }
+
+    /**
+     * Check for command keyboard patterns
+     * @param {string} password - Password to check
+     * @returns {boolean} True if pattern found
+     */
+    private static hasKeyboardPattern(password: string): boolean {
+        const lowerPassword = password.toLowerCase();
+        return this.KEYBOARD_PATTERNS.some((pattern) => {
+            lowerPassword.includes(pattern);
+        });
+    }
+
+    /**
+     * Analyze password strngth comprehensively
+     * @param {string} password - Passwrod to evaluate
+     * @returns {PasswordStrengthResult} Detailed stregth checket
+     */
+    static analyzePassword(password: string): PasswordStrengthResult {
+        const feedback: string[] = [];
+
+        if (password.length < this.MIN_LENGTH) {
+            feedback.push(
+                `Password must be at least ${this.MIN_LENGTH} characters long`,
+            );
+        }
+
+        const complexityChecks = [
+            {
+                regex: /[A-Z]/,
+                message: 'Include at least one uppercase letter',
+            },
+            {
+                regex: /[a-z]/,
+                message: 'Include at least one lowercase letter',
+            },
+            {
+                regex: /[0-9]/,
+                message: 'Include at least one number',
+            },
+            {
+                regex: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/,
+                message: 'Include at least one special character',
+            },
+        ];
+
+        complexityChecks.forEach((check) => {
+            if (!check.regex.test(password)) {
+                feedback.push(check.message);
+            }
+        });
+
+        if (this.COMMON_PASSWORDS.includes(password.toLowerCase())) {
+            feedback.push(`Avoid using common passwords`);
+        }
+
+        if (this.hasKeyboardPattern(password)) {
+            feedback.push(`Avoid using simple keyboard patterns`);
+        }
+
+        const entropy = this.calculateEntropy(password);
+
+        let score = 0;
+        if (password.length >= this.MIN_LENGTH) score++;
+        complexityChecks.forEach((check) => {
+            if (check.regex.test(password)) score++;
+        });
+
+        if (entropy > 40) score++;
+        if (!this.COMMON_PASSWORDS.includes(password.toLowerCase())) score++;
+        if (!this.hasKeyboardPattern(password)) score++;
+
+        const isStrong =
+            score >= 5 &&
+            password.length >= this.MIN_LENGTH &&
+            complexityChecks.every((check) => check.regex.test(password));
+
+        return {
+            score: Math.min(score, 4),
+            feedback,
+            isStrong,
+        };
+    }
+
+    /**
+     * Provides a human-readable strngth description
+     * @param {number} score - Password strength score (0-4)
+     * @returns {string} strength level
+     */
+    static getStrengthDesription(score: number): string {
+        const descriptions = [
+            'Very Weak',
+            'Weak',
+            'Moderate',
+            'Strong',
+            'Very Strong',
+        ];
+        return descriptions[score] || 'Unknown';
+    }
+
+    /**
+     * Validate password meets minimum security requirements
+     * @param {string} password - Password to validate
+     * @throws {Error} If password does not meet minimum requirements
+     */
+    static validatePassword(password: string): void {
+        const analysis = this.analyzePassword(password);
+
+        if (!analysis.isStrong) {
+            const errorMessage = [
+                `Password does not meet security requirements: `,
+                ...analysis.feedback,
+            ].join('\n');
+
+            throw new Error(errorMessage);
+        }
+    }
+}
+
+/**
  * Core class for handling file encryption, decryption, and editing operations.
  */
 class VaultCLI {
