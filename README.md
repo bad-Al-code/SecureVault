@@ -18,6 +18,14 @@ Vault is secure, command-line file encryption tool that helps you protect sensit
 
 ### Installation
 
+##### Download Prebuilt Binaries
+
+Download the appropriate binary for your operating system from the Releases page:
+
+-   Linux: `vault`
+-   macOS: `vault`
+-   Windows: `vault.exe`
+
 ##### Build from Source
 
 1. Clone the repository
@@ -70,8 +78,6 @@ vault decrypt secrets.txt test.json
 
 ```
 
-> NOTE: For windows, use `vault.exe <command name>`
-
 ##### Version Management
 
 ```bash
@@ -89,13 +95,47 @@ vault restore secrets.txt <versionID>
 vault help
 ```
 
-##### Download Prebuilt Binaries
+### Usage for Windows
 
-Download the appropriate binary for your operating system from the Releases page:
+##### Basic Commands
 
--   Linux: `vault`
--   macOS: `vault`
--   Windows: `vault.exe`
+```bash
+# Encrypt a file
+vault.exe encrypt secrets.txt
+
+# Decrypt a file
+vault.exe decrypt secrets.txt
+
+# View encrypted file contents
+vault.exe view secrets.txt
+
+# Edit an encrypted file (opens in your default editor)
+vault.exe edit secrets.txt
+
+# Encrypt multiple files at once
+vault.exe encrypt secrets.txt test.json
+
+# Decrypt multiple files at once
+vault.exe decrypt secrets.txt test.json
+
+```
+
+##### Version Management
+
+```bash
+# View version history of a file
+vault.exe history secrets.txt
+
+#NOTE: for versionID: look at the ./.vault.exe_history/version_log.json
+# Restore a file to a specific version
+vault.exe restore secrets.txt <versionID>
+```
+
+##### Help
+
+```bash
+vault.exe help
+```
 
 ### Security Details
 
