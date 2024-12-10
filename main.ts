@@ -542,7 +542,7 @@ class VaultCLI {
      * @param {string} filename - The path to the file to check
      * @returns {Promise<boolean>} - Whether the file is encrypted
      * */
-    private static async isEncrypted(filename: string): Promise<boolean> {
+    static async isEncrypted(filename: string): Promise<boolean> {
         try {
             const content = await fs.readFile(filename, 'utf8');
             return content.startsWith(this.HEADER.trim());
@@ -998,6 +998,178 @@ Examples:
     }
 }
 
+interface BatchProcessOptions {
+    recursive?: boolean;
+    filePattern?: RegExp;
+    excludePattern?: RegExp;
+    dryRun?: boolean;
+    logFile?: string;
+}
+
+class BatchProcessor {
+    private loadingIndicator: LoadingIndicator;
+
+    constructor() {
+        this.loadingIndicator = new LoadingIndicator();
+    }
+
+    /**
+     * Recursively find files matching processing criteria
+     * @param {string} directory - Starting directory for file search
+     * @param {BatchProcessOptions} options - Processing configuration options
+     * @returns {Promise<string[]>} List of files matching criteria
+     */
+    async findFiles(
+        directory: string,
+        options: BatchProcessOptions = {},
+    ): Promise<string[]> {
+        const {
+            recursive = false,
+            filePattern = /.*/,
+            excludePattern = /^$/,
+        } = options;
+
+        const foundFiles: string[] = [];
+
+        const processDirectory = async (currentDir: string) => {
+            const entries = await fs.readdir(currentDir, {
+                withFileTypes: true,
+            });
+
+            for (const entry of entries) {
+                const fullPath = path.join(currentDir, entry.name);
+
+                if (entry.isDirectory() && recursive) {
+                    await processDirectory(fullPath);
+                } else if (entry.isFile()) {
+                    if (
+                        filePattern.test(entry.name) &&
+                        !excludePattern.test(entry.name)
+                    ) {
+                        foundFiles.push(fullPath);
+                    }
+                }
+            }
+        };
+
+        await processDirectory(directory);
+        return foundFiles;
+    }
+
+    /**
+     * Batch encrypt files in a directory
+     * @param {string} directory - Directory containing files to encrypt
+     * @param {BatchProcessOptions} options - Processing configuration
+     */
+    async batchEncrypt(
+        directory: string,
+        options: BatchProcessOptions = {},
+    ): Promise<void> {
+        try {
+            const files = await this.findFiles(directory, options);
+            const password = await VaultCLI.getPassword(true);
+
+            for (const file of files) {
+                try {
+                    if (!(await VaultCLI.isEncrypted(file))) {
+                        await VaultCLI.encryptFile([file]);
+                        this.loadingIndicator.start(`Encrypting ${file}...`);
+                        this.loadingIndicator.stop(`✔ ${file} encrypted`);
+                    } else {
+                        this.loadingIndicator.stop(
+                            `⚠️ ${file} already encrypted`,
+                        );
+                    }
+                } catch (error) {
+                    this.loadingIndicator.stop(
+                        `✘ Failed to encrypt ${file}: ${error}`,
+                    );
+                }
+            }
+        } catch (error) {
+            this.loadingIndicator.stop(`Batch encryption failed: ${error}`);
+        }
+    }
+
+    /**
+     * Batch decrypt files in a directory
+     * @param {string} directory - Directory containing encrypted files
+     * @param {BatchProcessOptions} options - Processing configuration
+     */
+    async batchDecrypt(
+        directory: string,
+        options: BatchProcessOptions = {},
+    ): Promise<void> {
+        try {
+            const files = await this.findFiles(directory, {
+                ...options,
+                filePattern: /.*\.enc$/, // Only target encrypted files
+            });
+            const password = await VaultCLI.getPassword();
+
+            for (const file of files) {
+                this.loadingIndicator.start(`Decrypting ${file}...`);
+                try {
+                    await VaultCLI.decryptFile([file]);
+                    this.loadingIndicator.stop(`✔ ${file} decrypted`);
+                } catch (error) {
+                    this.loadingIndicator.stop(
+                        `✘ Failed to decrypt ${file}: ${error}`,
+                    );
+                }
+            }
+        } catch (error) {
+            this.loadingIndicator.stop(`Batch decryption failed: ${error}`);
+        }
+    }
+
+    /**
+     * Batch restore file versions
+     * @param {string} directory - Directory containing versioned files
+     * @param {string} versionId - Version identifier to restore
+     * @param {BatchProcessOptions} options - Processing configuration
+     */
+    async batchRestore(
+        directory: string,
+        versionId: string,
+        options: BatchProcessOptions = {},
+    ): Promise<void> {
+        try {
+            const files = await this.findFiles(directory, options);
+
+            for (const file of files) {
+                this.loadingIndicator.start(`Restoring version for ${file}...`);
+                try {
+                    await VersionControl.restoreVersion(file, versionId);
+                    this.loadingIndicator.stop(`✔ ${file} restored`);
+                } catch (error) {
+                    this.loadingIndicator.stop(
+                        `✘ Failed to restore ${file}: ${error}`,
+                    );
+                }
+            }
+        } catch (error) {
+            this.loadingIndicator.stop(`Batch restoration failed: ${error}`);
+        }
+    }
+
+    /**
+     * Log batch processing results
+     * @param {string} logFile - Path to log file
+     * @param {string} operation - Type of batch operation
+     * @param {any[]} results - Processing results
+     */
+    async logResults(
+        logFile: string,
+        operation: string,
+        results: any[],
+    ): Promise<void> {
+        const timestamp = new Date().toISOString();
+        const logEntry = `${timestamp} - ${operation}\n${JSON.stringify(results, null, 2)}\n`;
+        await fs.appendFile(logFile, logEntry);
+    }
+}
+
 /**
  * Enum representing available commands for the Vault CLI
  */
@@ -1010,6 +1182,9 @@ enum VaultCommand {
     RESTORE = 'restore',
     COMPARE = 'compare',
     HELP = 'help',
+    BATCH_ENCRYPT = 'batch-encrypt',
+    BATCH_DECRYPT = 'batch-decrypt',
+    BATCH_RESTORE = 'batch-restore',
 }
 
 /**
@@ -1070,6 +1245,7 @@ function validateArguments(command: VaultCommand, filenames: string[]): void {
 async function main() {
     const args = process.argv.slice(2);
     const loadingIndicator = new LoadingIndicator();
+    const batchProcessor = new BatchProcessor();
 
     try {
         if (
@@ -1120,6 +1296,24 @@ async function main() {
                 loadingIndicator.stop(
                     `Comparison Result: ${JSON.stringify(result, null, 2)}`,
                 );
+                break;
+            case VaultCommand.BATCH_ENCRYPT:
+                await batchProcessor.batchEncrypt(filenames[0], {
+                    recursive: args.includes('--recursive'),
+                    filePattern: args.includes('--pattern')
+                        ? new RegExp(args[args.indexOf('--pattern') + 1])
+                        : undefined,
+                });
+                break;
+            case VaultCommand.BATCH_DECRYPT:
+                await batchProcessor.batchDecrypt(filenames[0], {
+                    recursive: args.includes('--recursive'),
+                });
+                break;
+            case VaultCommand.BATCH_RESTORE:
+                await batchProcessor.batchRestore(filenames[0], filenames[1], {
+                    recursive: args.includes('--recursive'),
+                });
                 break;
         }
     } catch (error: unknown) {
