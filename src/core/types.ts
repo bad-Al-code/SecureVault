@@ -17,3 +17,17 @@ export interface VaultFileParts {
     iv: Buffer;
     encryptedContent: string;
 }
+
+export interface VersionLogEntry {
+    id: string;
+    timeStamp: string;
+    message: string;
+    originalHash: string;
+}
+
+export interface VersionComparison {
+    version1: VersionLogEntry;
+    version2: VersionLogEntry;
+    addedLines: string[];
+    removedLines: string[];
+}

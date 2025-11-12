@@ -1,308 +1,12 @@
 #!/usr/bin/env node
 
 import { execSync, spawn } from 'node:child_process';
-import * as crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { CryptoService } from './services';
+import { CryptoService, VersionControlService } from './services';
 import { LoadingIndicator, PasswordStrengthMeter } from './utils';
-
-class VersionControl {
-    private static VAULT_HISTORY_DIR = '.vault_history';
-
-    /**
-     * Get file content hash
-     * @param {string} filename - The path to the file
-     * @returns {string} - Hash of the file content
-     * */
-    private static getFileHash(filename: string): string {
-        try {
-            const fileBuffer = readFileSync(filename);
-            return crypto.createHash('sha256').update(fileBuffer).digest('hex');
-        } catch (error) {
-            return '';
-        }
-    }
-
-    /**
-     * Initialize version control for a file
-     * @param {string} filename - The path to the file
-     * @param {string} commitMessage - initial commit message
-     * */
-    static async intiVersionControl(
-        filename: string,
-        commitMessage: string,
-        maxVersions: number = 10,
-    ): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-        const fileBaseName = path.basename(filename);
-        const fileHistoryDir = path.join(
-            path.dirname(filename),
-            this.VAULT_HISTORY_DIR,
-            fileBaseName,
-        );
-
-        try {
-            await fs.mkdir(fileHistoryDir, { recursive: true });
-
-            const logFile = path.join(fileHistoryDir, 'version_log.json');
-            let versionLog: {
-                id: string;
-                timeStamp: string;
-                message: string;
-                originalHealth: string;
-            }[] = [];
-
-            try {
-                const existingLog = await fs.readFile(logFile, 'utf8');
-                versionLog = JSON.parse(existingLog);
-            } catch (error) {
-                // TODO: create a new log file, if log file doesn't exist
-            }
-
-            const versionId = crypto.randomBytes(16).toString('hex');
-
-            const versionEntry = {
-                id: versionId,
-                timeStamp: new Date().toISOString(),
-                message: commitMessage,
-                originalHealth: this.getFileHash(filename),
-            };
-
-            versionLog.push(versionEntry);
-
-            versionLog.sort(
-                (a, b) =>
-                    new Date(b.timeStamp).getTime() -
-                    new Date(a.timeStamp).getTime(),
-            );
-
-            while (versionLog.length > maxVersions) {
-                const oldestVersion = versionLog.pop();
-                if (oldestVersion) {
-                    const versionFile = path.join(
-                        fileHistoryDir,
-                        `${oldestVersion.id}.enc`,
-                    );
-
-                    try {
-                        await fs.unlink(versionFile);
-                    } catch (error) {
-                        // Ignore errors if file doesn't exist
-                    }
-                }
-            }
-
-            await fs.writeFile(logFile, JSON.stringify(versionLog, null, 2));
-
-            const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
-
-            await fs.copyFile(filename, versionFile);
-        } catch (error: any) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `Version control initialization failed: ${error.message} `,
-            );
-        }
-    }
-
-    /**
-     * Show version history for a file
-     * @param {string} filename - The path to the file
-     * */
-    static async showHistory(filename: string): Promise<void> {
-        const loadingIndicator = new LoadingIndicator();
-        const fileBaseName = path.basename(filename);
-        const fileHistoryDir = path.join(
-            path.dirname(filename),
-            this.VAULT_HISTORY_DIR,
-            fileBaseName,
-        );
-        const logFile = path.join(fileHistoryDir, 'version_log.json');
-
-        try {
-            const logContent = await fs.readFile(logFile, 'utf8');
-            const versionLog: {
-                id: string;
-                timeStamp: string;
-                message: string;
-            }[] = JSON.parse(logContent);
-
-            versionLog.forEach((entry, index) => {
-                loadingIndicator.start('');
-
-                const date = new Date(entry.timeStamp);
-                const formattedDate = isNaN(date.getTime())
-                    ? 'Invalid Date'
-                    : date.toLocaleString();
-
-                loadingIndicator.stop(`
-${index + 1}. Version ID: ${entry.id}
-Timestamp: ${formattedDate}
-Message: ${entry.message}
-				`);
-            });
-        } catch (error) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `Could not retrieve version history: ${error}`,
-            );
-        }
-    }
-
-    /**
-     * Restore a file to a specific version
-     * @param {string} filename - The path to the file
-     * @param {string} versionId - The ID of the version to restore
-     * */
-    static async restoreVersion(
-        filename: string,
-        versionId: string,
-    ): Promise<void> {
-        const fileBaseName = path.basename(filename);
-        const fileHistoryDir = path.join(
-            path.dirname(filename),
-            this.VAULT_HISTORY_DIR,
-            fileBaseName,
-        );
-        const loadingIndicator = new LoadingIndicator();
-        const logFile = path.join(fileHistoryDir, 'version_log.json');
-        const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
-
-        try {
-            const logContent = await fs.readFile(logFile, 'utf8');
-            const versionLog: { id: string; timeStamp: string }[] =
-                JSON.parse(logContent);
-
-            const versionEntry = versionLog.find(
-                (entry) => entry.id === versionId,
-            );
-
-            if (!versionEntry) {
-                throw new Error('Version not found');
-            }
-
-            const password = await VaultCLI.getPassword();
-
-            loadingIndicator.start('');
-            const encryptedData = await fs.readFile(versionFile, 'utf8');
-            const lines = encryptedData.split('\n');
-
-            const salt = Buffer.from(lines[1], 'hex');
-            const iv = Buffer.from(lines[2], 'hex');
-            const encrypted = lines[3];
-
-            const key = await VaultCLI.deriveKey(password, salt);
-
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
-
-            await fs.writeFile(filename, decrypted);
-
-            loadingIndicator.stop(
-                `Restored version ${versionId} from ${versionEntry.timeStamp}`,
-            );
-        } catch (error: any) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `Version restoration failed: ${error.message}`,
-            );
-            process.exit(1);
-        }
-    }
-
-    /**
-     * Caluculate differences between two file contents
-     * @private
-     * @param {string} content1 - The content of the first file
-     * @param {string} content2 - The content of the second file
-     * @returns {string[]} An array of lines present in content1 but not in content2.
-     * */
-    private static calculateDifferences(
-        content1: string,
-        content2: string,
-    ): string[] {
-        const lines1 = content1.split('\n');
-        const lines2 = content2.split('\n');
-
-        return lines1.filter((line) => !lines2.includes(line));
-    }
-
-    /**
-     * Compare two versions of a file and return their metadata and differences.
-     *
-     * @static
-     * @param {string} filename - The path to the file being compared.
-     * @param {string} version1Id - The ID of the first version to compare.
-     * @param {string} version2Id - The ID of the second version to compare.
-     * @returns {Promise<object>} A promise resolving to an object containing
-     * metadata of both versions and the differences between them.
-     * @throws Will throw an error if version comparison fails.
-     */
-    static async compareVersions(
-        filename: string,
-        version1Id: string,
-        version2Id: string,
-    ): Promise<{ differences: string[] }> {
-        const loadingIndicator = new LoadingIndicator();
-        const fileBaseName = path.basename(filename);
-        const fileHistoryDir = path.join(
-            path.dirname(filename),
-            this.VAULT_HISTORY_DIR,
-            fileBaseName,
-        );
-
-        try {
-            const password = await VaultCLI.getPassword();
-            const logFile = path.join(fileHistoryDir, 'version_log.json');
-            const exitingLog = await fs.readFile(logFile, 'utf8');
-            const versionLog: { id: string; timeStamp: string }[] =
-                JSON.parse(exitingLog);
-
-            const version1File = path.join(fileHistoryDir, `${version1Id}.enc`);
-            const version2File = path.join(fileHistoryDir, `${version2Id}.enc`);
-
-            const decryptVersion = async (versionFile: string) => {
-                const encryptedData = await fs.readFile(versionFile, 'utf8');
-                const lines = encryptedData.split('\n');
-                const salt = Buffer.from(lines[1], 'hex');
-                const iv = Buffer.from(lines[2], 'hex');
-                const encrypted = lines[3];
-
-                const key = await VaultCLI.deriveKey(password, salt);
-                const decipher = crypto.createDecipheriv(
-                    'aes-256-cbc',
-                    key,
-                    iv,
-                );
-                let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-                decrypted += decipher.final('utf8');
-                return decrypted;
-            };
-
-            const version1Content = await decryptVersion(version1File);
-            const version2Content = await decryptVersion(version2File);
-
-            return {
-                differences: this.calculateDifferences(
-                    version1Content,
-                    version2Content,
-                ),
-            };
-        } catch (error: any) {
-            loadingIndicator.start('');
-            loadingIndicator.stop(
-                `Version comparison failed: ${error.message}`,
-            );
-
-            throw error;
-        }
-    }
-}
 
 class VaultCLI {
     /**
@@ -319,30 +23,6 @@ class VaultCLI {
             return false;
         }
     }
-
-    /**
-     * Derives a cryptographic key from a password and salt using PBKDF2.
-     * @private
-     * @param {string} password - The password to derive the key from.
-     * @param {Buffer} salt - The cryptographic salt.
-     * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
-     * @throws {Error} If key derivation fails.
-     */
-    // static async deriveKey(password: string, salt: Buffer): Promise<Buffer> {
-    //     return new Promise((resolve, reject) => {
-    //         crypto.pbkdf2(
-    //             password,
-    //             salt,
-    //             this.ITERATIONS,
-    //             this.KEY_LENGTH,
-    //             'sha256',
-    //             (err, derivedKey) => {
-    //                 if (err) reject(err);
-    //                 else resolve(derivedKey);
-    //             },
-    //         );
-    //     });
-    // }
 
     /**
      * Reads a password securely from the terminal.
@@ -466,14 +146,15 @@ class VaultCLI {
 
                 await fs.writeFile(filename, encryptedOutput);
 
-                await VersionControl.intiVersionControl(
+                await VersionControlService.init(
                     filename,
                     `Initial encryption of ${path.basename(filename)}`,
                 );
 
                 loadingIndicator.stop(`✔ ${filename} encrypted successfully`);
             }
-        } catch (error: any) {
+        } catch (err) {
+            let error = err as Error;
             loadingIndicator.start('');
             loadingIndicator.stop(`✘ Encryption failed: ${error.message}`);
             process.exit(1);
@@ -681,7 +362,7 @@ class VaultCLI {
 
             await fs.writeFile(filename, newOutput);
 
-            await VersionControl.intiVersionControl(
+            await VersionControlService.init(
                 filename,
                 `Edited ${path.basename(filename)}`,
             );
@@ -869,8 +550,8 @@ class BatchProcessor {
             for (const file of files) {
                 this.loadingIndicator.start(`Restoring version for ${file}...`);
                 try {
-                    await VersionControl.restoreVersion(file, versionId);
-                    this.loadingIndicator.stop(`✔ ${file} restored`);
+                    // await VersionControlService.restore(file, versionId);
+                    // this.loadingIndicator.stop(`✔ ${file} restored`);
                 } catch (error) {
                     this.loadingIndicator.stop(
                         `✘ Failed to restore ${file}: ${error}`,
@@ -1010,21 +691,43 @@ async function main() {
                 await VaultCLI.editFile(filenames[0]);
                 break;
             case VaultCommand.HISTORY:
-                await VersionControl.showHistory(filenames[0]);
+                await VersionControlService.showHistory(filenames[0]);
                 break;
             case VaultCommand.RESTORE:
-                await VersionControl.restoreVersion(filenames[0], filenames[1]);
+                const loadingIndicator = new LoadingIndicator();
+                try {
+                    loadingIndicator.start(
+                        `Restoring version ${filenames[1]}...`,
+                    );
+                    const password = await VaultCLI.getPassword();
+                    await VersionControlService.restore(
+                        filenames[0],
+                        filenames[1],
+                        password,
+                    );
+                    loadingIndicator.stop(
+                        `✔ Restored version ${filenames[1]} successfully.`,
+                    );
+                } catch (error: any) {
+                    loadingIndicator.stop(
+                        `✘ Restoration failed: ${error.message}`,
+                    );
+                }
                 break;
             case VaultCommand.COMPARE:
-                const result = await VersionControl.compareVersions(
-                    filenames[0],
-                    filenames[1],
-                    filenames[2],
+                // const result = await VersionControl.compareVersions(
+                //     filenames[0],
+                //     filenames[1],
+                //     filenames[2],
+                // );
+                // loadingIndicator.start('');
+                // loadingIndicator.stop(
+                //     `Comparison Result: ${JSON.stringify(result, null, 2)}`,
+                // );
+                console.log(
+                    'Compare command is temporarily disabled during refactoring.',
                 );
-                loadingIndicator.start('');
-                loadingIndicator.stop(
-                    `Comparison Result: ${JSON.stringify(result, null, 2)}`,
-                );
+
                 break;
             case VaultCommand.BATCH_ENCRYPT:
                 await batchProcessor.batchEncrypt(filenames[0], {
