@@ -1,25 +1,42 @@
 {
-    "name": "vault",
-    "version": "1.0.0",
-    "description": "Create a similar vault like ansible-vault.",
-    "main": "./dist/main.js",
-    "bin": {
-        "vault": "./dist/main.js"
-    },
-    "scripts": {
-        "build": "tsc",
-        "package": "pkg . --targets node18-linux-x64,node18-win-x64,node18-macos-x64"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "devDependencies": {
-        "@types/node": "^22.9.3",
-        "prettier": "^3.3.3",
-        "typescript": "^5.7.2"
-    },
-    "dependencies": {
-        "pkg": "^5.8.1",
-        "zod": "^4.1.12"
-    }
+  "name": "vault",
+  "version": "1.0.0",
+  "description": "Create a similar vault like ansible-vault.",
+  "main": "./dist/main.js",
+  "bin": {
+    "vault": "./dist/main.js"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "build": "tsc",
+    "package": "pkg . --targets node18-linux-x64,node18-win-x64,node18-macos-x64",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check"
+  },
+  "lint-staged": {
+    "**/*.{js,ts}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^22.9.3",
+    "eslint": "^9.39.1",
+    "globals": "^16.5.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.6",
+    "prettier": "^3.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.46.4"
+  },
+  "dependencies": {
+    "pkg": "^5.8.1",
+    "zod": "^4.1.12"
+  }
 }

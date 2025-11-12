@@ -1,0 +1,7 @@
+node_modules/
+.pnpm-store/
+
+apps/*/dist/
+apps/*/web-build/
+
+pnpm-lock.yaml

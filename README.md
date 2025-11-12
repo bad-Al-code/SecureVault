@@ -4,17 +4,17 @@ Vault is secure, command-line file encryption tool that helps you protect sensit
 
 ### Features
 
--   **Robust Encryption**: Use AES-256-CBC encryption with PBKDF2 key derivation
--   **File Operations**:
-    -   Encrypt file
-    -   Decrypt file
-    -   View Encrypted file contents
-    -   Edit Encrypted file directly
-    -   **Version Management**:
-        -   View version history of a file
-        -   Restore a file to a specific version
--   **Cross Platform**: Works on Linux, macOS, and Windows
--   **Secure Password Handling**: Masked password input with advanced terminal control
+- **Robust Encryption**: Use AES-256-CBC encryption with PBKDF2 key derivation
+- **File Operations**:
+  - Encrypt file
+  - Decrypt file
+  - View Encrypted file contents
+  - Edit Encrypted file directly
+  - **Version Management**:
+    - View version history of a file
+    - Restore a file to a specific version
+- **Cross Platform**: Works on Linux, macOS, and Windows
+- **Secure Password Handling**: Masked password input with advanced terminal control
 
 ### Installation
 
@@ -22,9 +22,9 @@ Vault is secure, command-line file encryption tool that helps you protect sensit
 
 Download the appropriate binary for your operating system from the Releases page:
 
--   Linux: `vault`
--   macOS: `vault`
--   Windows: `vault.exe`
+- Linux: `vault`
+- macOS: `vault`
+- Windows: `vault.exe`
 
 ##### Build from Source
 
@@ -139,14 +139,14 @@ vault.exe help
 
 ### Security Details
 
--   **Encryption Method**: AES-256-CBC
--   **Key Derivation**: PBKDF2 with 10,000 iterations
--   **Salt Size**: 32 bytes
--   **Initialization Vector**: 16 bytes
+- **Encryption Method**: AES-256-CBC
+- **Key Derivation**: PBKDF2 with 10,000 iterations
+- **Salt Size**: 32 bytes
+- **Initialization Vector**: 16 bytes
 
 ### Requirements
 
--   Node.js 18+
+- Node.js 18+
 
 ### Disclaimer
 

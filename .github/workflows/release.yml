@@ -1,47 +1,47 @@
 name: Release Vault CLI
 on:
-    push:
-        tags:
-            - 'v*'
+  push:
+    tags:
+      - 'v*'
 jobs:
-    release:
-        runs-on: ubuntu-latest
-        permissions:
-            contents: write
-        steps:
-            - name: Checkout code
-              uses: actions/checkout@v4
-            - name: Set up Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 18
-            - name: Install dependencies
-              run: npm install
-            - name: Install pkg
-              run: npm install -g pkg
-            - name: Build executables
-              run: |
-                  npm run build
-                  pkg . --targets node18-linux-x64,node18-macos-x64,node18-win-x64 --output vault
-            - name: Rename executables
-              run: |
-                  mv vault-linux vault
-                  mv vault-macos vault
-                  mv vault-win.exe vault.exe
-            - name: Set executable permissions for Linux/macOS
-              run: |
-                  chmod +x vault vault
-            - name: Upload executables to release
-              uses: ncipollo/release-action@v1
-              with:
-                  token: ${{ secrets.GITHUB_TOKEN }}
-                  tag: ${{ github.ref_name }}
-                  artifacts: |
-                      vault
-                      vault.exe
-                  name: Vault CLI ${{ github.ref_name }}
-                  body: |
-                      This release contains precompiled binaries for the Vault CLI tool:
-                      - **Linux**: `vault`
-                      - **macOS**: `vault`
-                      - **Windows**: `vault.exe`
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm install
+      - name: Install pkg
+        run: npm install -g pkg
+      - name: Build executables
+        run: |
+          npm run build
+          pkg . --targets node18-linux-x64,node18-macos-x64,node18-win-x64 --output vault
+      - name: Rename executables
+        run: |
+          mv vault-linux vault
+          mv vault-macos vault
+          mv vault-win.exe vault.exe
+      - name: Set executable permissions for Linux/macOS
+        run: |
+          chmod +x vault vault
+      - name: Upload executables to release
+        uses: ncipollo/release-action@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag: ${{ github.ref_name }}
+          artifacts: |
+            vault
+            vault.exe
+          name: Vault CLI ${{ github.ref_name }}
+          body: |
+            This release contains precompiled binaries for the Vault CLI tool:
+            - **Linux**: `vault`
+            - **macOS**: `vault`
+            - **Windows**: `vault.exe`
