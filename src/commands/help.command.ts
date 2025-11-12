@@ -9,7 +9,14 @@ Commands:
   edit <file>                           Edit an encrypted file
   history <file>                        Show version history for a file
   restore <file> <versionId>            Restore a file to a specific version
-  help, -h, --help                      Show this help message
+
+Batch Commands:
+  batch-encrypt <dir>                     Recursively encrypt all files in a directory.
+  batch-decrypt <dir>                     Recursively decrypt all files in a directory.
+
+Other Commands:
+  help, -h, --help                      Show this help message.
+
 
 Examples:
   vault encrypt secrets.txt
@@ -17,5 +24,6 @@ Examples:
   vault view secrets.txt
   vault edit secrets.txt
   vault history secrets.txt
+  vault batch-encrypt ./configs
 `);
 }

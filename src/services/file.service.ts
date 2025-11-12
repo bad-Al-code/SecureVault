@@ -1,4 +1,4 @@
-import { constants } from 'node:fs';
+import { constants, Dirent } from 'node:fs';
 import * as fs from 'node:fs/promises';
 
 export class FileService {
@@ -18,6 +18,17 @@ export class FileService {
    */
   public static async readFileBuffer(filePath: string): Promise<Buffer> {
     return fs.readFile(filePath);
+  }
+
+  /**
+   * Reads the contents of a directory, returning an array of Dirent objects.
+   * @param currentDir The path to the directory.
+   * @returns A promise that resolves to an array of Dirent objects.
+   */
+  public static async readDirectory(currentDir: string): Promise<Dirent[]> {
+    const entries = await fs.readdir(currentDir, { withFileTypes: true });
+
+    return entries;
   }
 
   /**

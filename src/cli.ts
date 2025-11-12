@@ -9,6 +9,7 @@ import {
   showHelp,
   ViewCommand,
 } from './commands';
+import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
 import { ICommand } from './core';
 
 async function main() {
@@ -19,6 +20,8 @@ async function main() {
     ['view', new ViewCommand()],
     ['history', new HistoryCommand()],
     ['restore', new RestoreCommand()],
+    ['batch-encrypt', new BatchEncryptCommand()],
+    ['batch-decrypt', new BatchDecryptCommand()],
   ]);
 
   const args = process.argv.slice(2);

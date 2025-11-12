@@ -40,3 +40,9 @@ export interface EditorCommand {
 export interface ICommand {
   execute(args: string[]): Promise<void>;
 }
+
+export interface BatchFindOptions {
+  recursive?: boolean;
+  filePattern?: RegExp;
+  excludePattern?: RegExp;
+}
