@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { PasswordStrengthDescription } from '../core';
-import { PasswordStrengthMeter } from './password-strength';
+import { PasswordStrengthDescription } from '../../core';
+import { PasswordStrengthMeter } from '../password-strength';
 
 describe('PasswordStrengthMeter', () => {
   describe('analyze', () => {
