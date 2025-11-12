@@ -195,21 +195,33 @@ class VaultCLI {
             const password = await this.getPassword();
 
             for (const filename of encryptedFiles) {
-                loadingIndicator.start(`Decrypting ${filename}...`);
+                try {
+                    loadingIndicator.start(`Decrypting ${filename}...`);
 
-                const encryptedData = await fs.readFile(filename, 'utf8');
-                const decryptedText = await CryptoService.decrypt(
-                    encryptedData,
-                    password,
-                );
+                    const encryptedData = await fs.readFile(filename, 'utf8');
+                    const decryptedText = await CryptoService.decrypt(
+                        encryptedData,
+                        password,
+                    );
 
-                await fs.writeFile(filename, decryptedText);
+                    await fs.writeFile(filename, decryptedText);
 
-                loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
+                    loadingIndicator.stop(
+                        `✔ ${filename} decrypted successfully`,
+                    );
+                } catch (err) {
+                    const error = err as Error;
+                    loadingIndicator.stop();
+
+                    console.error(
+                        `✘ Failed to decrypt ${filename}: Invalid password or corrupted file.`,
+                        error.message,
+                    );
+                }
             }
         } catch (err) {
             let error = err as Error;
-            loadingIndicator.start('');
+            // loadingIndicator.start('');
             loadingIndicator.stop(`✘ Decryption failed: ${error.message}`);
             process.exit(1);
         }
@@ -232,7 +244,10 @@ class VaultCLI {
                 process.exit(1);
             }
 
+            loadingIndicator.stop();
             const password = await this.getPassword();
+
+            loadingIndicator.start('Decrypting...');
             const decryptedText = await CryptoService.decrypt(
                 encryptedData,
                 password,
@@ -318,9 +333,13 @@ class VaultCLI {
      */
     static async editFile(filename: string): Promise<void> {
         const loadingIndicator = new LoadingIndicator();
+        let originalContent: string | null = null;
 
         try {
+            loadingIndicator.start(`Reading ${filename}...`);
             const encryptedData = await fs.readFile(filename, 'utf8');
+            originalContent = encryptedData;
+
             if (!CryptoService.isVaultFile(encryptedData)) {
                 loadingIndicator.stop(
                     '✘ Error: File is not an encrypted vault file.',
@@ -328,12 +347,15 @@ class VaultCLI {
                 process.exit(1);
             }
 
+            loadingIndicator.stop();
             const password = await this.getPassword();
 
+            loadingIndicator.start('Decrypting for editing...');
             const decrypted = await CryptoService.decrypt(
                 encryptedData,
                 password,
             );
+            loadingIndicator.stop();
 
             await fs.writeFile(filename, decrypted);
 
@@ -373,7 +395,11 @@ class VaultCLI {
         } catch (err) {
             const error = err as Error;
             loadingIndicator.stop(`✘ Edit failed: ${error.message}`);
-            // TODO: restore the original file in case of failure.
+
+            if (originalContent) {
+                await fs.writeFile(filename, originalContent);
+            }
+
             process.exit(1);
         }
     }
@@ -696,22 +722,26 @@ async function main() {
             case VaultCommand.RESTORE:
                 const loadingIndicator = new LoadingIndicator();
                 try {
+                    const password = await VaultCLI.getPassword();
                     loadingIndicator.start(
                         `Restoring version ${filenames[1]}...`,
                     );
-                    const password = await VaultCLI.getPassword();
                     await VersionControlService.restore(
                         filenames[0],
                         filenames[1],
                         password,
                     );
+
                     loadingIndicator.stop(
                         `✔ Restored version ${filenames[1]} successfully.`,
                     );
-                } catch (error: any) {
+                } catch (err) {
+                    let error = err as Error;
                     loadingIndicator.stop(
                         `✘ Restoration failed: ${error.message}`,
                     );
+
+                    process.exit(1);
                 }
                 break;
             case VaultCommand.COMPARE:
