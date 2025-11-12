@@ -1,153 +1,112 @@
-# VAULT CLI
+<div align="center">
+  <h1>🛡️ SecureVault CLI 🛡️</h1>
+  <p><strong>A modern, command-line tool for encrypting, editing, and versioning your sensitive files.</strong></p>
+  <p>Think <code>ansible-vault</code> but with built-in, Git-like version history for every individual file.</p>
+  
+  <p>
+    <a href="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml"><img src="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+    <a href="https://github.com/bad-Al-code/SecureVault/releases/latest"><img src="https://img.shields.io/github/v/release/bad-Al-code/SecureVault" alt="Latest Release"></a>
+    <!-- <a href="https://github.com/bad-Al-code/SecureVault/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bad-Al-code/SecureVault" alt="License"></a> -->
+  </p>
+</div>
 
-Vault is secure, command-line file encryption tool that helps you protect sensitive files with string AES-256-CBC encryption.
+<!-- TODO: Add a GIF demonstrating the 'edit', 'history', and 'compare' commands in action. -->
 
-### Features
+## Why SecureVault?
 
-- **Robust Encryption**: Use AES-256-CBC encryption with PBKDF2 key derivation
-- **File Operations**:
-  - Encrypt file
-  - Decrypt file
-  - View Encrypted file contents
-  - Edit Encrypted file directly
-  - **Version Management**:
-    - View version history of a file
-    - Restore a file to a specific version
-- **Cross Platform**: Works on Linux, macOS, and Windows
-- **Secure Password Handling**: Masked password input with advanced terminal control
+Managing secrets and sensitive configuration files can be cumbersome. You often have to choose between unencrypted files in private repos or manually encrypting/decrypting files with tools like GPG before every use. SecureVault streamlines this entire workflow.
 
-### Installation
+- **✍️ Edit on the Fly:** Run `vault edit secrets.yml`, and the file is automatically decrypted into a temporary session, opened in your favorite editor (`$EDITOR`), and seamlessly re-encrypted on save. No more manual `decrypt -> edit -> encrypt` steps.
+- **🕰️ Never Lose a Change:** Every time you encrypt or edit a file, SecureVault automatically creates a version snapshot. Made a mistake? You can instantly view the `history` and `restore` any previous version.
+- **🎯 Simple and Secure:** Uses the industry-standard AES-256-CBC algorithm with PBKDF2 for key derivation. It's strong, reliable, and requires no complex setup.
 
-##### Download Prebuilt Binaries
+## ✨ Key Features
 
-Download the appropriate binary for your operating system from the Releases page:
+- 🔒 **Robust Encryption**: AES-256-CBC encryption with a salted PBKDF2 key derivation ensures your data is secure.
+- ✏️ **Seamless Editing**: Automatically decrypts files for editing and re-encrypts on save.
+- 🗂️ **Built-in Version Control**: Every change is saved as a new version. View history, restore, and compare versions of any file.
+- 📂 **Batch Operations**: Encrypt or decrypt entire directory trees with a single command.
+- ⚙️ **Cross-Platform**: A single, dependency-free binary for Linux, macOS, and Windows.
+- 🛡️ **Secure by Design**: Password strength is enforced, and secure password prompts hide input.
 
-- Linux: `vault`
-- macOS: `vault`
-- Windows: `vault.exe`
+## 🚀 Installation
 
-##### Build from Source
+### Quick Start (Recommended)
 
-1. Clone the repository
+Download the pre-compiled binary for your operating system from the [**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest) page.
+
+Place the binary in a directory included in your system's `PATH` (e.g., `/usr/local/bin` on Linux/macOS or a custom path on Windows).
+
+### From Source (For Developers)
+
+1.  **Clone the repository:**
+    ```bash
+    git clone https://github.com/bad-Al-code/SecureVault.git
+    cd SecureVault
+    ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
+3.  **Build the project:**
+    ```bash
+    npm run build
+    ```
+    The compiled JavaScript entry point will be located at `./dist/cli.js`. You can run it directly with `node dist/cli.js <command>`.
+
+## 💻 Usage
+
+**Note:** On Windows, use `vault.exe` instead of `vault`.
+
+### Core Operations
 
 ```bash
-git clone https://github.com/bad-Al-code/SecureVault.git
-cd SecureVault
-```
+# Encrypt a file (or multiple files)
+vault encrypt secrets.txt config.json
 
-2. Install dependencies
-
-```bash
-npm install
-```
-
-3. Build the project
-
-```bash
-npm run build
-```
-
-4. Make the script executable
-
-```bash
-chmod +x ./main.js
-```
-
-### Usage
-
-##### Basic Commands
-
-```bash
-# Encrypt a file
-vault encrypt secrets.txt
-
-# Decrypt a file
-vault decrypt secrets.txt
-
-# View encrypted file contents
+# View the decrypted contents of a file
 vault view secrets.txt
 
-# Edit an encrypted file (opens in your default editor)
+# Decrypt a file in-place
+vault decrypt secrets.txt
+
+# Edit an encrypted file securely
 vault edit secrets.txt
-
-# Encrypt multiple files at once
-vault encrypt secrets.txt test.json
-
-# Decrypt multiple files at once
-vault decrypt secrets.txt test.json
-
 ```
 
-##### Version Management
+### Version Control
 
-```bash
-# View version history of a file
+```
+# Show the version history of a file
 vault history secrets.txt
 
-#NOTE: for versionID: look at the ./.vault_history/version_log.json
-# Restore a file to a specific version
-vault restore secrets.txt <versionID>
+# Restore a file to a specific version ID
+# (Get the version ID from the 'history' command)
+vault restore secrets.txt <version_id>
+
+# See the differences between two versions
+vault compare secrets.txt <old_version_id> <new_version_id>
 ```
 
-##### Help
-
-```bash
-vault help
-```
-
-### Usage for Windows
-
-##### Basic Commands
-
-```bash
-# Encrypt a file
-vault.exe encrypt secrets.txt
-
-# Decrypt a file
-vault.exe decrypt secrets.txt
-
-# View encrypted file contents
-vault.exe view secrets.txt
-
-# Edit an encrypted file (opens in your default editor)
-vault.exe edit secrets.txt
-
-# Encrypt multiple files at once
-vault.exe encrypt secrets.txt test.json
-
-# Decrypt multiple files at once
-vault.exe decrypt secrets.txt test.json
+### Batch Operations
 
 ```
+# Recursively find and encrypt all unencrypted files in a directory
+vault batch-encrypt ./my-project/config
 
-##### Version Management
-
-```bash
-# View version history of a file
-vault.exe history secrets.txt
-
-#NOTE: for versionID: look at the ./.vault.exe_history/version_log.json
-# Restore a file to a specific version
-vault.exe restore secrets.txt <versionID>
+# Recursively find and decrypt all encrypted files
+vault batch-decrypt ./my-project/config
 ```
 
-##### Help
+## 🛠️ How It Works
 
-```bash
-vault.exe help
-```
+- **Encryption Method**: AES-256-CBC with a 16-byte Initialization Vector (IV).
+- **Key Derivation**: Your password is never stored. It's combined with a unique 32-byte salt and run through 10,000 iterations of PBKDF2 (SHA-256) to derive a strong 32-byte encryption key.
+- **Version History**: When a file like `secrets.txt` is versioned, a corresponding history is stored in a hidden directory at `.vault_history/secrets.txt/`. This directory contains the encrypted version snapshots and a `version_log.json` metadata file.
 
-### Security Details
+## 🤝 Contributing
 
-- **Encryption Method**: AES-256-CBC
-- **Key Derivation**: PBKDF2 with 10,000 iterations
-- **Salt Size**: 32 bytes
-- **Initialization Vector**: 16 bytes
+Contributions are welcome! Whether it's a bug report, a feature request, or a pull request, your input is valued.
 
-### Requirements
-
-- Node.js 18+
-
-### Disclaimer
-
-Always maintain backups of your important files. While Vault provides strong encryption, no system is 100% infallible.
+- Please open an [issue](https://github.com/bad-Al-code/SecureVault/issues) to discuss any significant changes before starting work.
+- Our [CI workflow](https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml) automatically checks for formatting and linting errors on every pull request. Please run `npm run lint` and `npm run format:check` locally before pushing.
