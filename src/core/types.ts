@@ -11,3 +11,9 @@ export enum PasswordStrengthDescription {
     Strong = 'Strong',
     VeryStrong = 'Very Strong',
 }
+
+export interface VaultFileParts {
+    salt: Buffer;
+    iv: Buffer;
+    encryptedContent: string;
+}

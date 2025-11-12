@@ -7,6 +7,7 @@ import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 
+import { CryptoService } from './services';
 import { LoadingIndicator, PasswordStrengthMeter } from './utils';
 
 class VersionControl {
@@ -303,24 +304,17 @@ Message: ${entry.message}
     }
 }
 
-/**
- * Core class for handling file encryption, decryption, and editing operations.
- */
 class VaultCLI {
-    private static readonly SALT_SIZE = 32;
-    private static readonly ITERATIONS = 10000;
-    private static readonly KEY_LENGTH = 32;
-    private static readonly HEADER = 'VAULT;\n';
-
     /**
      * Check if a file is already encrypted
-     * @param {string} filename - The path to the file to check
-     * @returns {Promise<boolean>} - Whether the file is encrypted
+     * @param filename - The path to the file to check
+     * @returns A promise resolving to true, if the file is encrypted, otherwise false.
      * */
     static async isEncrypted(filename: string): Promise<boolean> {
         try {
             const content = await fs.readFile(filename, 'utf8');
-            return content.startsWith(this.HEADER.trim());
+
+            return CryptoService.isVaultFile(content);
         } catch (error) {
             return false;
         }
@@ -334,21 +328,21 @@ class VaultCLI {
      * @returns {Promise<Buffer>} - A promise that resolves to the derived key.
      * @throws {Error} If key derivation fails.
      */
-    static async deriveKey(password: string, salt: Buffer): Promise<Buffer> {
-        return new Promise((resolve, reject) => {
-            crypto.pbkdf2(
-                password,
-                salt,
-                this.ITERATIONS,
-                this.KEY_LENGTH,
-                'sha256',
-                (err, derivedKey) => {
-                    if (err) reject(err);
-                    else resolve(derivedKey);
-                },
-            );
-        });
-    }
+    // static async deriveKey(password: string, salt: Buffer): Promise<Buffer> {
+    //     return new Promise((resolve, reject) => {
+    //         crypto.pbkdf2(
+    //             password,
+    //             salt,
+    //             this.ITERATIONS,
+    //             this.KEY_LENGTH,
+    //             'sha256',
+    //             (err, derivedKey) => {
+    //                 if (err) reject(err);
+    //                 else resolve(derivedKey);
+    //             },
+    //         );
+    //     });
+    // }
 
     /**
      * Reads a password securely from the terminal.
@@ -427,6 +421,7 @@ class VaultCLI {
 
         return password;
     }
+
     /**
      * Encrypts the contents of a file.
      * @param {string[]} filenames - Array of file path to encrypt
@@ -462,24 +457,14 @@ class VaultCLI {
 
             for (const filename of unencryptedFiles) {
                 loadingIndicator.start(`Encrypting ${filename}...`);
-                const salt = crypto.randomBytes(this.SALT_SIZE);
-                const iv = crypto.randomBytes(16);
+                const plainText = await fs.readFile(filename, 'utf-8');
 
-                const key = await this.deriveKey(password, salt);
-                const data = await fs.readFile(filename, 'utf8');
+                const encryptedOutput = await CryptoService.encrypt(
+                    plainText,
+                    password,
+                );
 
-                const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-                let encrypted = cipher.update(data, 'utf8', 'hex');
-                encrypted += cipher.final('hex');
-
-                const output = [
-                    this.HEADER.trim(),
-                    salt.toString('hex'),
-                    iv.toString('hex'),
-                    encrypted,
-                ].join('\n');
-
-                await fs.writeFile(filename, output);
+                await fs.writeFile(filename, encryptedOutput);
 
                 await VersionControl.intiVersionControl(
                     filename,
@@ -506,10 +491,7 @@ class VaultCLI {
 
         try {
             for (const filename of filenames) {
-                const encryptedData = await fs.readFile(filename, 'utf8');
-                const lines = encryptedData.split('\n');
-
-                if (lines[0] === this.HEADER.trim()) {
+                if (await this.isEncrypted(filename)) {
                     encryptedFiles.push(filename);
                 } else {
                     unencryptedFiles.push(filename);
@@ -531,31 +513,22 @@ class VaultCLI {
 
             const password = await this.getPassword();
 
-            for (const filename of filenames) {
+            for (const filename of encryptedFiles) {
                 loadingIndicator.start(`Decrypting ${filename}...`);
 
                 const encryptedData = await fs.readFile(filename, 'utf8');
-                const lines = encryptedData.split('\n');
-
-                const salt = Buffer.from(lines[1], 'hex');
-                const iv = Buffer.from(lines[2], 'hex');
-                const encrypted = lines[3];
-
-                const key = await this.deriveKey(password, salt);
-
-                const decipher = crypto.createDecipheriv(
-                    'aes-256-cbc',
-                    key,
-                    iv,
+                const decryptedText = await CryptoService.decrypt(
+                    encryptedData,
+                    password,
                 );
-                let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-                decrypted += decipher.final('utf8');
 
-                await fs.writeFile(filename, decrypted);
+                await fs.writeFile(filename, decryptedText);
 
                 loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
             }
-        } catch (error: any) {
+        } catch (err) {
+            let error = err as Error;
+            loadingIndicator.start('');
             loadingIndicator.stop(`✘ Decryption failed: ${error.message}`);
             process.exit(1);
         }
@@ -570,29 +543,24 @@ class VaultCLI {
 
         try {
             const encryptedData = await fs.readFile(filename, 'utf8');
-            const lines = encryptedData.split('\n');
 
-            if (lines[0] !== this.HEADER.trim()) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is not encrypted');
+            if (!CryptoService.isVaultFile(encryptedData)) {
+                loadingIndicator.stop(
+                    '✘ Error: File is not an encrypted vault file.',
+                );
                 process.exit(1);
             }
 
             const password = await this.getPassword();
-
-            const salt = Buffer.from(lines[1], 'hex');
-            const iv = Buffer.from(lines[2], 'hex');
-            const encrypted = lines[3];
-
-            const key = await this.deriveKey(password, salt);
-
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final('utf8');
+            const decryptedText = await CryptoService.decrypt(
+                encryptedData,
+                password,
+            );
 
             loadingIndicator.stop();
-            console.log(decrypted);
-        } catch (error: any) {
+            console.log(decryptedText);
+        } catch (err) {
+            let error = err as Error;
             loadingIndicator.stop(`✘ View failed: ${error.message}`);
             process.exit(1);
         }
@@ -672,24 +640,19 @@ class VaultCLI {
 
         try {
             const encryptedData = await fs.readFile(filename, 'utf8');
-            const lines = encryptedData.split('\n');
-
-            if (lines[0] !== this.HEADER.trim()) {
-                loadingIndicator.start('');
-                loadingIndicator.stop('✘ Error: File is not encrypted');
+            if (!CryptoService.isVaultFile(encryptedData)) {
+                loadingIndicator.stop(
+                    '✘ Error: File is not an encrypted vault file.',
+                );
                 process.exit(1);
             }
 
             const password = await this.getPassword();
 
-            const salt = Buffer.from(lines[1], 'hex');
-            const iv = Buffer.from(lines[2], 'hex');
-            const encrypted = lines[3];
-
-            const key = await this.deriveKey(password, salt);
-            const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
-            let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-            decrypted += decipher.final(`utf8`);
+            const decrypted = await CryptoService.decrypt(
+                encryptedData,
+                password,
+            );
 
             await fs.writeFile(filename, decrypted);
 
@@ -711,21 +674,10 @@ class VaultCLI {
 
             const editedContent = await fs.readFile(filename, 'utf8');
 
-            const newSalt = crypto.randomBytes(this.SALT_SIZE);
-            const newIv = crypto.randomBytes(16);
-
-            const newKey = await this.deriveKey(password, newSalt);
-
-            const cipher = crypto.createCipheriv('aes-256-cbc', newKey, newIv);
-            let newEncrypted = cipher.update(editedContent, 'utf8', 'hex');
-            newEncrypted += cipher.final('hex');
-
-            const newOutput = [
-                this.HEADER.trim(),
-                newSalt.toString('hex'),
-                newIv.toString('hex'),
-                newEncrypted,
-            ].join(`\n`);
+            const newOutput = await CryptoService.encrypt(
+                editedContent,
+                password,
+            );
 
             await fs.writeFile(filename, newOutput);
 
@@ -737,8 +689,10 @@ class VaultCLI {
             loadingIndicator.stop(
                 '✔ File edited and re-encrypted successfully',
             );
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error;
             loadingIndicator.stop(`✘ Edit failed: ${error.message}`);
+            // TODO: restore the original file in case of failure.
             process.exit(1);
         }
     }
