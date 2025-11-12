@@ -2,11 +2,12 @@
     "name": "vault",
     "version": "1.0.0",
     "description": "Create a similar vault like ansible-vault.",
+    "main": "./dist/main.js",
     "bin": {
-        "vault": "./main.js"
+        "vault": "./dist/main.js"
     },
     "scripts": {
-        "build": "tsc main.ts",
+        "build": "tsc",
         "package": "pkg . --targets node18-linux-x64,node18-win-x64,node18-macos-x64"
     },
     "keywords": [],
@@ -18,6 +19,7 @@
         "typescript": "^5.7.2"
     },
     "dependencies": {
-        "pkg": "^5.8.1"
+        "pkg": "^5.8.1",
+        "zod": "^4.1.12"
     }
 }
