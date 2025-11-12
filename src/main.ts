@@ -1,12 +1,16 @@
 #!/usr/bin/env node
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { execSync, spawn } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs/promises';
-import * as os from 'node:os';
 import * as path from 'node:path';
 
-import { CryptoService, VersionControlService } from './services';
+import {
+  CryptoService,
+  EditorService,
+  FileService,
+  VersionControlService,
+} from './services';
 import { LoadingIndicator, PasswordStrengthMeter } from './utils';
 
 class VaultCLI {
@@ -16,8 +20,10 @@ class VaultCLI {
    * @returns A promise resolving to true, if the file is encrypted, otherwise false.
    * */
   static async isEncrypted(filename: string): Promise<boolean> {
+    if (!(await FileService.fileExists(filename))) return false;
+
     try {
-      const content = await fs.readFile(filename, 'utf8');
+      const content = await FileService.readFile(filename);
 
       return CryptoService.isVaultFile(content);
     } catch (_error) {
@@ -138,14 +144,14 @@ class VaultCLI {
 
       for (const filename of unencryptedFiles) {
         loadingIndicator.start(`Encrypting ${filename}...`);
-        const plainText = await fs.readFile(filename, 'utf-8');
+        const plainText = await FileService.readFile(filename);
 
         const encryptedOutput = await CryptoService.encrypt(
           plainText,
           password
         );
 
-        await fs.writeFile(filename, encryptedOutput);
+        await FileService.writeFile(filename, encryptedOutput);
 
         await VersionControlService.init(
           filename,
@@ -199,13 +205,13 @@ class VaultCLI {
         try {
           loadingIndicator.start(`Decrypting ${filename}...`);
 
-          const encryptedData = await fs.readFile(filename, 'utf8');
+          const encryptedData = await FileService.readFile(filename);
           const decryptedText = await CryptoService.decrypt(
             encryptedData,
             password
           );
 
-          await fs.writeFile(filename, decryptedText);
+          await FileService.writeFile(filename, decryptedText);
 
           loadingIndicator.stop(`✔ ${filename} decrypted successfully`);
         } catch (err) {
@@ -234,7 +240,7 @@ class VaultCLI {
     const loadingIndicator = new LoadingIndicator();
 
     try {
-      const encryptedData = await fs.readFile(filename, 'utf8');
+      const encryptedData = await FileService.readFile(filename);
 
       if (!CryptoService.isVaultFile(encryptedData)) {
         loadingIndicator.stop('✘ Error: File is not an encrypted vault file.');
@@ -260,69 +266,6 @@ class VaultCLI {
   }
 
   /**
-   * Select the most approriate text editor based on OS and environment.
-   * @returns {Object} An object containing the editor command and its arguments
-   * @property {string} command - The executable command for the text editor
-   * @property {string[]} args - Additional arguments for the editor command
-   * */
-  private static selectEditor(): { command: string; args: string[] } {
-    const envEditor = process.env.EDITOR;
-    if (envEditor) {
-      return { command: envEditor, args: [] };
-    }
-
-    const platform = os.platform();
-    switch (platform) {
-      case 'win32': {
-        const windowsEditor = [
-          { command: 'notepad.exe', args: [] },
-          { command: 'code.cmd', args: ['-w'] },
-          { command: 'notepad++.exe', args: [] },
-        ];
-        for (const editor of windowsEditor) {
-          try {
-            execSync(`where ${editor.command}`, {
-              stdio: 'ignore',
-            });
-            return editor;
-          } catch {
-            continue;
-          }
-        }
-        break;
-      }
-
-      case 'darwin':
-        return { command: 'open', args: ['-e'] };
-
-      case 'linux': {
-        const linuxEditors = [
-          { command: 'vim', args: [] },
-          { command: 'code', args: ['-w'] },
-          { command: 'nano', args: [] },
-          { command: 'emacs', args: [] },
-        ];
-        for (const editor of linuxEditors) {
-          try {
-            execSync(`which ${editor.command}`, {
-              stdio: 'ignore',
-            });
-            return editor;
-          } catch {
-            continue;
-          }
-        }
-        break;
-      }
-    }
-
-    return {
-      command: platform === 'win32' ? 'notepad.exe' : 'nano',
-      args: [],
-    };
-  }
-
-  /**
    * Edit the contents of a file.
    * @param {string} filename - The path to the file to edit.
    */
@@ -332,7 +275,7 @@ class VaultCLI {
 
     try {
       loadingIndicator.start(`Reading ${filename}...`);
-      const encryptedData = await fs.readFile(filename, 'utf8');
+      const encryptedData = await FileService.readFile(filename);
       originalContent = encryptedData;
 
       if (!CryptoService.isVaultFile(encryptedData)) {
@@ -347,9 +290,9 @@ class VaultCLI {
       const decrypted = await CryptoService.decrypt(encryptedData, password);
       loadingIndicator.stop();
 
-      await fs.writeFile(filename, decrypted);
+      await FileService.writeFile(filename, decrypted);
 
-      const editor = this.selectEditor();
+      const editor = EditorService.selectEditor();
       const editProcess = spawn(editor.command, [...editor.args, filename], {
         stdio: 'inherit',
       });
@@ -367,7 +310,7 @@ class VaultCLI {
 
       const newOutput = await CryptoService.encrypt(editedContent, password);
 
-      await fs.writeFile(filename, newOutput);
+      await FileService.writeFile(filename, newOutput);
 
       await VersionControlService.init(
         filename,

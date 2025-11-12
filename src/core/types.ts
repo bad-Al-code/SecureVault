@@ -31,3 +31,8 @@ export interface VersionComparison {
   addedLines: string[];
   removedLines: string[];
 }
+
+export interface EditorCommand {
+  command: string;
+  args: string[];
+}

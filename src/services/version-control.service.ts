@@ -1,10 +1,9 @@
 import * as crypto from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { VersionLogEntry } from '../core';
 import { CryptoService } from './crypto.service';
+import { FileService } from './file.service';
 
 export class VersionControlService {
   private static readonly VAULT_HISTORY_DIR = '.vault_history';
@@ -21,7 +20,7 @@ export class VersionControlService {
     commitMessage: string
   ): Promise<void> {
     const fileHistoryDir = this.getFileHistoryDir(filename);
-    await fs.mkdir(fileHistoryDir, { recursive: true });
+    await FileService.createDirectory(fileHistoryDir);
 
     const logFile = path.join(fileHistoryDir, this.LOG_FILE_NAME);
     const versionLog = await this.readVersionLog(logFile);
@@ -32,7 +31,7 @@ export class VersionControlService {
       id: versionId,
       timeStamp: new Date().toISOString(),
       message: commitMessage,
-      originalHash: this.getFileHash(filename),
+      originalHash: await this.getFileHash(filename),
     };
 
     versionLog.unshift(newEntry);
@@ -41,7 +40,7 @@ export class VersionControlService {
     await this.writeVersionLog(logFile, versionLog);
 
     const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
-    await fs.copyFile(filename, versionFile);
+    await FileService.copyFile(filename, versionFile);
   }
 
   /**
@@ -95,14 +94,14 @@ export class VersionControlService {
     }
 
     const versionFile = path.join(fileHistoryDir, `${versionId}.enc`);
-    const encryptedDate = await fs.readFile(versionFile, 'utf-8');
+    const encryptedDate = await FileService.readFile(versionFile);
 
     const decryptedContent = await CryptoService.decrypt(
       encryptedDate,
       password
     );
 
-    await fs.writeFile(filename, decryptedContent);
+    await FileService.writeFile(filename, decryptedContent);
   }
 
   /**
@@ -129,7 +128,7 @@ export class VersionControlService {
     logFilePath: string
   ): Promise<VersionLogEntry[]> {
     try {
-      const content = await fs.readFile(logFilePath, 'utf-8');
+      const content = await FileService.readFile(logFilePath);
 
       return JSON.parse(content) as VersionLogEntry[];
     } catch {
@@ -142,9 +141,9 @@ export class VersionControlService {
    * @param filename File to hash.
    * @returns File hash or an empty string on error.
    */
-  private static getFileHash(filename: string): string {
+  private static async getFileHash(filename: string): Promise<string> {
     try {
-      const fileBuffer = readFileSync(filename);
+      const fileBuffer = await FileService.readFileBuffer(filename);
 
       return crypto.createHash('sha256').update(fileBuffer).digest('hex');
     } catch {
@@ -156,7 +155,7 @@ export class VersionControlService {
     logFilePath: string,
     log: VersionLogEntry[]
   ): Promise<void> {
-    await fs.writeFile(logFilePath, JSON.stringify(log, null, 2));
+    await FileService.writeFile(logFilePath, JSON.stringify(log, null, 2));
   }
 
   /**
@@ -175,7 +174,7 @@ export class VersionControlService {
         const versionFile = path.join(historyDir, `${oldest.id}.enc`);
 
         try {
-          await fs.unlink(versionFile);
+          await FileService.deleteFile(versionFile);
         } catch {
           /* empty */
         }
