@@ -1,5 +1,5 @@
 import { ICommand } from '../core';
-import { CryptoService, FileService } from '../services';
+import { CryptoService, FileService, VaultActionService } from '../services';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class DecryptCommand implements ICommand {
@@ -58,43 +58,13 @@ export class DecryptCommand implements ICommand {
       const password = await getPassword(false);
 
       for (const filename of filesToDecrypt) {
-        await this._decryptFile(filename, password);
+        await VaultActionService.decryptFile(filename, password);
       }
     } catch (_err) {
       this.loadingIndicator.stop();
 
       console.error(`✘ A critical error occurred during decryption.`);
       process.exit(1);
-    }
-  }
-
-  /**
-   * Decrypts a single file.
-   * @param filename - The path to the file to decrypt.
-   * @param password - The password to use for decryption.
-   */
-  private async _decryptFile(
-    filename: string,
-    password: string
-  ): Promise<void> {
-    try {
-      this.loadingIndicator.start(`Decrypting ${filename}...`);
-
-      const encryptedData = await FileService.readFile(filename);
-      const decryptedText = await CryptoService.decrypt(
-        encryptedData,
-        password
-      );
-
-      await FileService.writeFile(filename, decryptedText);
-
-      this.loadingIndicator.stop(`✔  ${filename} decrypted successfully`);
-    } catch (_err) {
-      this.loadingIndicator.stop();
-
-      console.error(
-        `✘ Failed to decrypt ${filename}: Invalid password or corrupted file.`
-      );
     }
   }
 }

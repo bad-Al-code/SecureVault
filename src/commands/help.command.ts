@@ -9,6 +9,7 @@ Commands:
   edit <file>                           Edit an encrypted file
   history <file>                        Show version history for a file
   restore <file> <versionId>            Restore a file to a specific version
+  compare <file> <v1_id> <v2_id>        Compare two versions of a file.
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.

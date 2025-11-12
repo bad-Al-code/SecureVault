@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as path from 'node:path';
 
-import { VersionLogEntry } from '../core';
+import { VersionComparison, VersionLogEntry } from '../core';
 import { CryptoService } from './crypto.service';
 import { FileService } from './file.service';
 
@@ -102,6 +102,63 @@ export class VersionControlService {
     );
 
     await FileService.writeFile(filename, decryptedContent);
+  }
+
+  /**
+   * Compares two versions of a file and returns their differences.
+   * @param filename - The path to the file.
+   * @param version1Id - The ID of the first version (older).
+   * @param version2Id - The ID of the second version (newer).
+   * @param password - The password to decrypt the versions.
+   * @returns A promise that resolves to a structured comparison object.
+   */
+  public static async compareVersions(
+    filename: string,
+    version1Id: string,
+    version2Id: string,
+    password: string
+  ): Promise<VersionComparison> {
+    const fileHistoryDir = this.getFileHistoryDir(filename);
+    const logFile = path.join(fileHistoryDir, this.LOG_FILE_NAME);
+    const versionLog = await this.readVersionLog(logFile);
+
+    const version1 = versionLog.find((v) => v.id === version1Id);
+    const version2 = versionLog.find((v) => v.id === version2Id);
+
+    if (!version1 || !version2) {
+      throw new Error('One or both version IDs could not be found.');
+    }
+
+    const [content1, content2] = await Promise.all([
+      this._getDecryptedVersionContent(fileHistoryDir, version1Id, password),
+      this._getDecryptedVersionContent(fileHistoryDir, version2Id, password),
+    ]);
+
+    const lines1 = new Set(content1.split('\n'));
+    const lines2 = new Set(content2.split('\n'));
+
+    const addedLines = [...lines2].filter((line) => !lines1.has(line));
+    const removedLines = [...lines1].filter((line) => !lines2.has(line));
+
+    return { version1, version2, addedLines, removedLines };
+  }
+
+  /**
+   * Reads and decrypts the content of a specific version snapshot.
+   * @param historyDir - The path to the file's history directory.
+   * @param versionId - The ID of the version to decrypt.
+   * @param password - The decryption password.
+   * @returns The decrypted plain text content of the version.
+   */
+  private static async _getDecryptedVersionContent(
+    historyDir: string,
+    versionId: string,
+    password: string
+  ): Promise<string> {
+    const versionFile = path.join(historyDir, `${versionId}.enc`);
+    const encryptedData = await FileService.readFile(versionFile);
+
+    return CryptoService.decrypt(encryptedData, password);
   }
 
   /**

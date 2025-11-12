@@ -1,7 +1,6 @@
 import { ICommand } from '../../core';
-import { CryptoService, FileService } from '../../services';
+import { CryptoService, FileService, VaultActionService } from '../../services';
 import { LoadingIndicator, findFiles, getPassword } from '../../utils';
-import { EncryptCommand } from '../encrypt.command';
 
 export class BatchEncryptCommand implements ICommand {
   private readonly loadingIndicator = new LoadingIndicator();
@@ -64,11 +63,8 @@ export class BatchEncryptCommand implements ICommand {
   private async _processFiles(filesToEncrypt: string[]): Promise<void> {
     const password = await getPassword(true);
 
-    const encryptCommand = new EncryptCommand();
-
     for (const filename of filesToEncrypt) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (encryptCommand as any)._encryptFile(filename, password);
+      await VaultActionService.encryptFile(filename, password);
     }
   }
 }

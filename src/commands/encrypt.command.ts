@@ -1,7 +1,5 @@
-import * as path from 'node:path';
-
 import { ICommand } from '../core';
-import { CryptoService, FileService, VersionControlService } from '../services';
+import { CryptoService, FileService, VaultActionService } from '../services';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class EncryptCommand implements ICommand {
@@ -61,7 +59,7 @@ export class EncryptCommand implements ICommand {
       const password = await getPassword(true);
 
       for (const filename of filesToEncrypt) {
-        await this._encryptFile(filename, password);
+        await VaultActionService.encryptFile(filename, password);
       }
     } catch (err) {
       const error = err as Error;
@@ -70,28 +68,5 @@ export class EncryptCommand implements ICommand {
       console.error(`✘ Encryption failed: ${error.message}`);
       process.exit(1);
     }
-  }
-
-  /**
-   * Encrypts a single file and initializes its version history.
-   * @param filename - The path to the file to encrypt.
-   * @param password - The password to use for encryption.
-   */
-  private async _encryptFile(
-    filename: string,
-    password: string
-  ): Promise<void> {
-    this.loadingIndicator.start(`Encrypting ${filename}...`);
-
-    const plainText = await FileService.readFile(filename);
-    const encryptedOutput = await CryptoService.encrypt(plainText, password);
-
-    await FileService.writeFile(filename, encryptedOutput);
-    await VersionControlService.init(
-      filename,
-      `Initial encryption of ${path.basename(filename)}`
-    );
-
-    this.loadingIndicator.stop(`✔  ${filename} encrypted successfully`);
   }
 }

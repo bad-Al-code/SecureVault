@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import {
+  CompareCommand,
   DecryptCommand,
   EditCommand,
   EncryptCommand,
@@ -20,6 +21,7 @@ async function main() {
     ['view', new ViewCommand()],
     ['history', new HistoryCommand()],
     ['restore', new RestoreCommand()],
+    ['compare', new CompareCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

@@ -1,3 +1,4 @@
+export * from './compare.command';
 export * from './decrypt.commnd';
 export * from './edit.command';
 export * from './encrypt.command';
