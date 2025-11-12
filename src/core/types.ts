@@ -36,3 +36,7 @@ export interface EditorCommand {
   command: string;
   args: string[];
 }
+
+export interface ICommand {
+  execute(args: string[]): Promise<void>;
+}
