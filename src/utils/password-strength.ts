@@ -12,6 +12,7 @@ export class PasswordStrengthMeter {
   ];
   private static readonly COMMON_PASSWORDS = [
     'password',
+    'password123',
     '123456',
     'qwerty',
     'admin',

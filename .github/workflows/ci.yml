@@ -32,5 +32,5 @@ jobs:
       - name: Lint code
         run: npm run lint
 
-      - name: Run tests (placeholder)
-        run: echo "Test step is ready to be implemented."
+      - name: Run tests
+        run: npm run test --run

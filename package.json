@@ -13,7 +13,10 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
     "format": "prettier . --write",
-    "format:check": "prettier . --check"
+    "format:check": "prettier . --check",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest run --ui"
   },
   "lint-staged": {
     "**/*.{js,ts}": [
@@ -33,7 +36,8 @@
     "lint-staged": "^16.2.6",
     "prettier": "^3.3.3",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.46.4"
+    "typescript-eslint": "^8.46.4",
+    "vitest": "^4.0.8"
   },
   "dependencies": {
     "pkg": "^5.8.1",
