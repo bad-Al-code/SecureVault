@@ -59,6 +59,7 @@ export class VaultActionService {
       );
 
       await FileService.writeFile(filename, decryptedText);
+
       loadingIndicator.stop(`✔  ${filename} decrypted successfully`);
     } catch (_error) {
       loadingIndicator.stop();

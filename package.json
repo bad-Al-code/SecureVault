@@ -16,7 +16,8 @@
     "format:check": "prettier . --check",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:ui": "vitest run --ui"
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui"
   },
   "lint-staged": {
     "**/*.{js,ts}": [
@@ -31,6 +32,7 @@
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.9.3",
     "@vitest/coverage-v8": "^4.0.8",
+    "@vitest/ui": "^4.0.8",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
