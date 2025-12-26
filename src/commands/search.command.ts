@@ -1,7 +1,12 @@
 import path from 'node:path';
 import { ICommand } from '../core';
 import { CryptoService, FileService } from '../services';
-import { findFiles, getPassword, LoadingIndicator } from '../utils';
+import {
+  ConsoleFormatter,
+  findFiles,
+  getPassword,
+  LoadingIndicator,
+} from '../utils';
 
 interface SearchMatch {
   line: number;
@@ -37,7 +42,7 @@ export class SearchCommand implements ICommand {
       this.loadingIndicator.stop();
       const error = err as Error;
 
-      console.error(`Search failed: ${error.message}`);
+      console.error(ConsoleFormatter.red(`Search failed: ${error.message}`));
 
       process.exit(1);
     }
@@ -73,8 +78,14 @@ export class SearchCommand implements ICommand {
         if (CryptoService.isVaultFile(content)) {
           encryptedFiles.push(filename);
         }
-      } catch {
-        // Ignore
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+
+        console.warn(
+          ConsoleFormatter.yellow(
+            `\n Skipping inaccessible file "${filename}": ${msg}`
+          )
+        );
       }
     }
 
@@ -108,7 +119,12 @@ export class SearchCommand implements ICommand {
           matches.set(filename, fileMatches);
         }
       } catch (_error) {
-        // Ignore
+        this.loadingIndicator.stop();
+        console.warn(
+          ConsoleFormatter.yellow(
+            `Warning: Could not decrypt ${path.basename(filename)}. It might use a different password.`
+          )
+        );
       }
     }
 
@@ -155,28 +171,19 @@ export class SearchCommand implements ICommand {
 
     results.forEach((matches, filename) => {
       const relativePath = path.relative(process.cwd(), filename);
-      // \x1b[36m = Cyan (Filename), \x1b[0m = Reset
-      console.log(`\x1b[36m📄 ${relativePath}\x1b[0m`);
+      console.log(`📄 ${ConsoleFormatter.cyan(relativePath)}`);
 
       matches.forEach((match) => {
-        // \x1b[90m = Gray (Line number)
+        const highlightedContent = ConsoleFormatter.highlight(
+          match.content,
+          query
+        );
         console.log(
-          `  \x1b[90m${match.line}:\x1b[0m ${this._highlightMatch(match.content, query)}`
+          `  ${ConsoleFormatter.gray(match.line.toString() + ':')} ${highlightedContent}`
         );
       });
+
       console.log('');
     });
-  }
-
-  /**
-   * Optional: Highlights the matched query in the content string.
-   * @param content - The content string.
-   * @param query - The search query.
-   * @returns The content string with the query highlighted.
-   */
-  private _highlightMatch(content: string, query: string): string {
-    const regex = new RegExp(`(${query})`, 'gi');
-    // \x1b[33m = Yellow (Match)
-    return content.replace(regex, '\x1b[33m$1\x1b[0m');
   }
 }

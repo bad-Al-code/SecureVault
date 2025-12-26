@@ -7,11 +7,11 @@ import {
   EncryptCommand,
   HistoryCommand,
   RestoreCommand,
+  SearchCommand,
   showHelp,
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
-import { SearchCommand } from './commands/search.command';
 import { ICommand } from './core';
 
 async function main() {
