@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { ICommand } from '../../core';
 import { CryptoService, FileService, S3Service } from '../../services';
+import { ICommand } from '../../types';
 import { ConsoleFormatter, findFiles, LoadingIndicator } from '../../utils';
 
 export class SyncPushCommand implements ICommand {

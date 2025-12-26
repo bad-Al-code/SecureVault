@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import * as os from 'node:os';
-import { EditorCommand } from '../core';
+import { EditorCommand } from '../types';
 
 export class EditorService {
   /**

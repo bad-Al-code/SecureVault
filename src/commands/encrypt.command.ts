@@ -1,5 +1,5 @@
-import { ICommand } from '../core';
 import { CryptoService, FileService, VaultActionService } from '../services';
+import { ICommand } from '../types';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class EncryptCommand implements ICommand {

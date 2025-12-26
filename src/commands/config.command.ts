@@ -1,5 +1,5 @@
-import { ICommand } from '../core';
 import { ConfigService } from '../services';
+import { ICommand } from '../types';
 import { ConsoleFormatter } from '../utils';
 
 export class ConfigCommand implements ICommand {

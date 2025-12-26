@@ -1,6 +1,6 @@
 import * as path from 'node:path';
-import { BatchFindOptions } from '../core';
 import { FileService } from '../services';
+import { BatchFindOptions } from '../types';
 
 /**
  * Recursively finds files in a directory that match the given criteria.

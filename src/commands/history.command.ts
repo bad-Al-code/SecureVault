@@ -1,5 +1,5 @@
-import { ICommand } from '../core';
 import { VersionControlService } from '../services';
+import { ICommand } from '../types';
 
 export class HistoryCommand implements ICommand {
   /**

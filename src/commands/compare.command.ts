@@ -1,5 +1,5 @@
-import { ICommand, VersionComparison } from '../core';
 import { VersionControlService } from '../services';
+import { ICommand, VersionComparison } from '../types';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class CompareCommand implements ICommand {

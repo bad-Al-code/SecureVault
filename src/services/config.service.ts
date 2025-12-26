@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { VaultConfig } from '../core';
+import { VaultConfig } from '../types';
 import { FileService } from './file.service';
 
 export class ConfigService {

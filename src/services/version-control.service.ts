@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 import * as path from 'node:path';
 
-import { VersionComparison, VersionLogEntry } from '../core';
+import { VersionComparison, VersionLogEntry } from '../types';
 import { CryptoService } from './crypto.service';
 import { FileService } from './file.service';
 

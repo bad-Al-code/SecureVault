@@ -1,13 +1,13 @@
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
 
-import { ICommand } from '../core';
 import {
   CryptoService,
   EditorService,
   FileService,
   VersionControlService,
 } from '../services';
+import { ICommand } from '../types';
 import { getPassword, LoadingIndicator } from '../utils';
 
 /**

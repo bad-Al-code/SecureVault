@@ -15,7 +15,7 @@ import {
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
-import { ICommand } from './core';
+import { ICommand } from './types';
 
 async function main() {
   const commands = new Map<string, ICommand>([

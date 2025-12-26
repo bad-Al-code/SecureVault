@@ -1,6 +1,6 @@
 import path from 'node:path';
-import { ICommand } from '../core';
 import { CryptoService, FileService } from '../services';
+import { ICommand } from '../types';
 import {
   ConsoleFormatter,
   findFiles,

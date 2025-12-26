@@ -1,5 +1,5 @@
-import { ICommand } from '../../core';
 import { CryptoService, FileService, VaultActionService } from '../../services';
+import { ICommand } from '../../types';
 import { LoadingIndicator, findFiles, getPassword } from '../../utils';
 
 export class BatchDecryptCommand implements ICommand {

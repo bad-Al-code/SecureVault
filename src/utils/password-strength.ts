@@ -1,5 +1,5 @@
-import { PasswordStrengthDescription, PasswordStrengthResult } from '../core';
 import { passwordSchema } from '../schemas';
+import { PasswordStrengthDescription, PasswordStrengthResult } from '../types';
 
 export class PasswordStrengthMeter {
   private static readonly MIN_LENGTH = 8;

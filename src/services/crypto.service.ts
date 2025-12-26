@@ -1,6 +1,6 @@
 import * as crypto from 'node:crypto';
 
-import { VaultFileParts } from '../core';
+import { VaultFileParts } from '../types';
 
 export class CryptoService {
   private static readonly SALT_SIZE = 32;
