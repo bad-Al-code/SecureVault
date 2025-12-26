@@ -52,3 +52,12 @@ export interface VaultConfig {
   awsRegion?: string;
   [key: string]: unknown;
 }
+
+export interface SyncStateEntry {
+  etag: string;
+  lastSynced: string;
+}
+
+export interface SyncState {
+  [filename: string]: SyncStateEntry;
+}
