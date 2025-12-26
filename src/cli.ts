@@ -2,6 +2,7 @@
 
 import {
   CompareCommand,
+  ConfigCommand,
   DecryptCommand,
   EditCommand,
   EncryptCommand,
@@ -24,6 +25,7 @@ async function main() {
     ['restore', new RestoreCommand()],
     ['compare', new CompareCommand()],
     ['search', new SearchCommand()],
+    ['config', new ConfigCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

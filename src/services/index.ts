@@ -1,3 +1,4 @@
+export * from './config.service';
 export * from './crypto.service';
 export * from './editor.service';
 export * from './file.service';

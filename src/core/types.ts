@@ -46,3 +46,9 @@ export interface BatchFindOptions {
   filePattern?: RegExp;
   excludePattern?: RegExp;
 }
+
+export interface VaultConfig {
+  awsBucket?: string;
+  awsRegion?: string;
+  [key: string]: unknown;
+}
