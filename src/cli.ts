@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 
 import {
+  AddKeyCommand,
   CompareCommand,
   DecryptCommand,
   EditCommand,
   EncryptCommand,
   HistoryCommand,
+  ListKeysCommand,
+  RemoveKeyCommand,
   RestoreCommand,
+  RotateKeyCommand,
   showHelp,
+  UpgradeCommand,
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
@@ -24,6 +29,11 @@ async function main() {
     ['compare', new CompareCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
+    ['add-key', new AddKeyCommand()],
+    ['remove-key', new RemoveKeyCommand()],
+    ['list-keys', new ListKeysCommand()],
+    ['rotate-key', new RotateKeyCommand()],
+    ['upgrade', new UpgradeCommand()],
   ]);
 
   const args = process.argv.slice(2);

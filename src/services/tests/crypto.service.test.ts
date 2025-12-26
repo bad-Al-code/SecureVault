@@ -553,7 +553,6 @@ describe('CryptoService', () => {
         mockPlainText,
         mockPassword
       );
-      const lines = encrypted.split('\n');
 
       const withExtraNewlines = encrypted + '\n\n\n';
       const decrypted = await CryptoService.decrypt(

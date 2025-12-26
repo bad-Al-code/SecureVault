@@ -25,6 +25,27 @@ export class CryptoService {
   }
 
   /**
+   * Determines the version of a vault file.
+   * @param fileContent The string content of the file.
+   * @returns 1 for V1 format, 2 for V2 format, or 0 if not a vault file.
+   */
+  public static getVaultVersion(fileContent: string): number {
+    if (!fileContent || typeof fileContent !== 'string') {
+      return 0;
+    }
+
+    if (fileContent.startsWith('VAULT-V2;')) {
+      return 2;
+    }
+
+    if (fileContent.startsWith(this.HEADER)) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  /**
    * Encrypts a string payload with a password.
    * @param plainText The string data to encrypt.
    * @param password The password to use for encryption.

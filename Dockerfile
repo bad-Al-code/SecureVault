@@ -1,4 +1,4 @@
-FROM node:alpine3.20 AS base 
+FROM node:22.21-alpine3.21  AS base 
 
 WORKDIR /app 
 
@@ -10,7 +10,7 @@ COPY main.ts tsconfig.json ./
 
 RUN npm run build
 
-FROM node:alpine3.20 
+FROM node:22.21-alpine3.21 
 
 RUN apk add --no-cache tini 
 

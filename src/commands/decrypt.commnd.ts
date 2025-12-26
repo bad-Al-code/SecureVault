@@ -1,5 +1,5 @@
 import { ICommand } from '../core';
-import { CryptoService, FileService, VaultActionService } from '../services';
+import { CryptoService, FileService } from '../services';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class DecryptCommand implements ICommand {
@@ -30,13 +30,18 @@ export class DecryptCommand implements ICommand {
    * @returns A promise that resolves to an array of valid, encrypted file paths.
    */
   private async _filterFiles(filenames: string[]): Promise<string[]> {
+    const { MultiKeyCryptoService } = await import('../services');
     const encryptedFiles = [];
 
     for (const filename of filenames) {
       if (await FileService.fileExists(filename)) {
         const content = await FileService.readFile(filename);
 
-        if (CryptoService.isVaultFile(content)) {
+        // Check for both V1 and V2 formats
+        if (
+          CryptoService.isVaultFile(content) ||
+          MultiKeyCryptoService.isVaultFileV2(content)
+        ) {
           encryptedFiles.push(filename);
         } else {
           console.log(`⚠️  Skipping non-encrypted file: ${filename}`);
@@ -54,17 +59,63 @@ export class DecryptCommand implements ICommand {
    * @param filesToDecrypt - An array of file paths ready for decryption.
    */
   private async _processFiles(filesToDecrypt: string[]): Promise<void> {
+    const { MultiKeyCryptoService } = await import('../services');
+
     try {
       const password = await getPassword(false);
 
       for (const filename of filesToDecrypt) {
-        await VaultActionService.decryptFile(filename, password);
+        await this._decryptFile(filename, password, MultiKeyCryptoService);
       }
     } catch (_err) {
       this.loadingIndicator.stop();
 
       console.error(`✘ A critical error occurred during decryption.`);
       process.exit(1);
+    }
+  }
+
+  /**
+   * Decrypts a single file, automatically detecting V1 or V2 format.
+   * @param filename - The path to the file to decrypt.
+   * @param password - The password to use for decryption.
+   * @param MultiKeyCryptoService - The multi-key crypto service.
+   */
+  private async _decryptFile(
+    filename: string,
+    password: string,
+    MultiKeyCryptoService: typeof import('../services').MultiKeyCryptoService
+  ): Promise<void> {
+    this.loadingIndicator.start(`Decrypting ${filename}...`);
+
+    try {
+      const encryptedData = await FileService.readFile(filename);
+      const version = CryptoService.getVaultVersion(encryptedData);
+
+      let decryptedText: string;
+
+      if (version === 2) {
+        // V2 format - use MultiKeyCryptoService
+        decryptedText = await MultiKeyCryptoService.decrypt(
+          encryptedData,
+          password
+        );
+      } else {
+        // V1 format - use CryptoService
+        decryptedText = await CryptoService.decrypt(encryptedData, password);
+      }
+
+      await FileService.writeFile(filename, decryptedText);
+
+      this.loadingIndicator.stop(
+        `✔  ${filename} decrypted successfully${version === 2 ? ' (V2)' : ''}`
+      );
+    } catch (_error) {
+      this.loadingIndicator.stop();
+
+      console.error(
+        `✘ Failed to decrypt ${filename}: Invalid password or corrupted file.`
+      );
     }
   }
 }

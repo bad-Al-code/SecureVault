@@ -17,17 +17,22 @@
 Managing secrets and sensitive configuration files can be cumbersome. You often have to choose between unencrypted files in private repos or manually encrypting/decrypting files with tools like GPG before every use. SecureVault streamlines this entire workflow.
 
 - **✍️ Edit on the Fly:** Run `vault edit secrets.yml`, and the file is automatically decrypted into a temporary session, opened in your favorite editor (`$EDITOR`), and seamlessly re-encrypted on save. No more manual `decrypt -> edit -> encrypt` steps.
+- **🔑 Multiple Passwords Per File:** Add multiple passwords to a single encrypted file using envelope encryption. Perfect for team collaboration - each member can use their own password to access the same file.
+- **🔄 Key Rotation:** Change passwords without re-encrypting the entire file. Rotate keys instantly while maintaining access for other authorized users.
 - **🕰️ Never Lose a Change:** Every time you encrypt or edit a file, SecureVault automatically creates a version snapshot. Made a mistake? You can instantly view the `history` and `restore` any previous version.
-- **🎯 Simple and Secure:** Uses the industry-standard AES-256-CBC algorithm with PBKDF2 for key derivation. It's strong, reliable, and requires no complex setup.
+- **🎯 Simple and Secure:** Uses industry-standard AES-256-GCM for content encryption and AES-256-CBC with PBKDF2 for key encryption. It's strong, reliable, and requires no complex setup.
 
 ## ✨ Key Features
 
-- 🔒 **Robust Encryption**: AES-256-CBC encryption with a salted PBKDF2 key derivation ensures your data is secure.
+- 🔒 **Robust Encryption**: AES-256-GCM for content encryption with authenticated encryption and integrity protection.
+- 🔑 **Multi-Key Support**: Add multiple passwords to a single file using envelope encryption. Each password can decrypt the file independently.
 - ✏️ **Seamless Editing**: Automatically decrypts files for editing and re-encrypts on save.
 - 🗂️ **Built-in Version Control**: Every change is saved as a new version. View history, restore, and compare versions of any file.
+- 🔄 **Key Management**: Add, remove, rotate, and list passwords without re-encrypting the entire file.
 - 📂 **Batch Operations**: Encrypt or decrypt entire directory trees with a single command.
 - ⚙️ **Cross-Platform**: A single, dependency-free binary for Linux, macOS, and Windows.
 - 🛡️ **Secure by Design**: Password strength is enforced, and secure password prompts hide input.
+- 🔙 **Backward Compatible**: Fully supports legacy V1 vault files with automatic format detection.
 
 ## 🚀 Installation
 
@@ -88,6 +93,25 @@ vault restore secrets.txt <version_id>
 vault compare secrets.txt <old_version_id> <new_version_id>
 ```
 
+### Multi-Key Management
+
+```bash
+# Add a new password to an encrypted file
+vault add-key secrets.txt "Bob's key"
+
+# List all passwords/key slots
+vault list-keys secrets.txt
+
+# Remove a password (interactive selection)
+vault remove-key secrets.txt
+
+# Rotate/change a password
+vault rotate-key secrets.txt
+
+# Upgrade V1 vault file to V2 format (enables multi-key)
+vault upgrade old-vault-file.txt
+```
+
 ### Batch Operations
 
 ```
@@ -100,9 +124,18 @@ vault batch-decrypt ./my-project/config
 
 ## 🛠️ How It Works
 
-- **Encryption Method**: AES-256-CBC with a 16-byte Initialization Vector (IV).
-- **Key Derivation**: Your password is never stored. It's combined with a unique 32-byte salt and run through 10,000 iterations of PBKDF2 (SHA-256) to derive a strong 32-byte encryption key.
-- **Version History**: When a file like `secrets.txt` is versioned, a corresponding history is stored in a hidden directory at `.vault_history/secrets.txt/`. This directory contains the encrypted version snapshots and a `version_log.json` metadata file.
+### V2 Format (Current - Multi-Key Support)
+- **Content Encryption**: AES-256-GCM with a randomly generated Data Encryption Key (DEK)
+- **Key Encryption**: Each password derives a Key Encryption Key (KEK) using PBKDF2 (10,000 iterations, SHA-256)
+- **Envelope Encryption**: The DEK encrypts your file content, and each KEK encrypts the DEK in separate key slots
+- **Key Slots**: Each password gets its own slot with unique salt, IV, and encrypted DEK
+- **Authenticated Encryption**: GCM mode provides integrity protection and tamper detection
+- **Version History**: When a file like `secrets.txt` is versioned, history is stored in `.vault_history/secrets.txt/`
+
+### V1 Format (Legacy - Single Key)
+- **Encryption Method**: AES-256-CBC with a 16-byte Initialization Vector (IV)
+- **Key Derivation**: PBKDF2 (10,000 iterations, SHA-256) with a unique 32-byte salt
+- **Backward Compatible**: All V1 files continue to work; use `vault upgrade` to enable multi-key features
 
 ## 🤝 Contributing
 

@@ -46,3 +46,29 @@ export interface BatchFindOptions {
   filePattern?: RegExp;
   excludePattern?: RegExp;
 }
+
+export interface KeySlot {
+  id: string;
+  algorithm: string;
+  iterations: number;
+  salt: Buffer;
+  encryptedDEK: Buffer;
+  iv: Buffer;
+  createdAt: string;
+  label?: string;
+}
+
+export interface VaultV2Metadata {
+  version: number;
+  algorithm: string;
+  createdAt: string;
+  modifiedAt: string;
+}
+
+export interface VaultV2FileParts {
+  metadata: VaultV2Metadata;
+  keySlots: KeySlot[];
+  iv: Buffer;
+  authTag: Buffer;
+  encryptedContent: string;
+}

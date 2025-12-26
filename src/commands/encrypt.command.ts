@@ -1,5 +1,5 @@
 import { ICommand } from '../core';
-import { CryptoService, FileService, VaultActionService } from '../services';
+import { CryptoService, FileService } from '../services';
 import { getPassword, LoadingIndicator } from '../utils';
 
 export class EncryptCommand implements ICommand {
@@ -59,7 +59,7 @@ export class EncryptCommand implements ICommand {
       const password = await getPassword(true);
 
       for (const filename of filesToEncrypt) {
-        await VaultActionService.encryptFile(filename, password);
+        await this._encryptFileV2(filename, password);
       }
     } catch (err) {
       const error = err as Error;
@@ -67,6 +67,40 @@ export class EncryptCommand implements ICommand {
       this.loadingIndicator.stop();
       console.error(`✘ Encryption failed: ${error.message}`);
       process.exit(1);
+    }
+  }
+
+  /**
+   * Encrypts a single file using V2 format with multi-key support.
+   * @param filename - The path to the file to encrypt.
+   * @param password - The password to use for encryption.
+   */
+  private async _encryptFileV2(
+    filename: string,
+    password: string
+  ): Promise<void> {
+    const { MultiKeyCryptoService } = await import('../services');
+    const { VersionControlService } = await import('../services');
+    const path = await import('node:path');
+
+    this.loadingIndicator.start(`Encrypting ${filename}...`);
+
+    try {
+      const plainText = await FileService.readFile(filename);
+      const encryptedOutput = await MultiKeyCryptoService.encrypt(plainText, [
+        password,
+      ]);
+
+      await FileService.writeFile(filename, encryptedOutput);
+      await VersionControlService.init(
+        filename,
+        `Initial encryption of ${path.basename(filename)}`
+      );
+
+      this.loadingIndicator.stop(`✔  ${filename} encrypted successfully (V2)`);
+    } catch (error) {
+      this.loadingIndicator.stop();
+      throw error;
     }
   }
 }
