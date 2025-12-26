@@ -10,6 +10,7 @@ import {
   RestoreCommand,
   SearchCommand,
   showHelp,
+  SyncPushCommand,
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
@@ -26,6 +27,7 @@ async function main() {
     ['compare', new CompareCommand()],
     ['search', new SearchCommand()],
     ['config', new ConfigCommand()],
+    ['push', new SyncPushCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

@@ -7,4 +7,5 @@ export * from './help.command';
 export * from './history.command';
 export * from './restore.command';
 export * from './search.command';
+export * from './sync';
 export * from './view.command';

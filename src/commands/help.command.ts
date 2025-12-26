@@ -12,6 +12,7 @@ Commands:
   compare <file> <v1_id> <v2_id>        Compare two versions of a file.
   search <query> [dir]                  Search for text within encrypted files
   config [key] [value]                  Get or Set configuration values
+  push                                  Upload encrypted files to S3 (Backup)
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
