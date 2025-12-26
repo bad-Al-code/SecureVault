@@ -13,6 +13,7 @@ Commands:
   search <query> [dir]                  Search for text within encrypted files
   config [key] [value]                  Get or Set configuration values
   push                                  Upload encrypted files to S3 (Backup)
+  pull                                  Download encrypted files from S3
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
