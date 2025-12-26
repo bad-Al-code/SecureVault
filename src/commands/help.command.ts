@@ -10,6 +10,7 @@ Commands:
   history <file>                        Show version history for a file
   restore <file> <versionId>            Restore a file to a specific version
   compare <file> <v1_id> <v2_id>        Compare two versions of a file.
+  search <query> [dir]                  Search for text within encrypted files
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
@@ -25,6 +26,7 @@ Examples:
   vault view secrets.txt
   vault edit secrets.txt
   vault history secrets.txt
+  vault search "API_KEY" ./projects
   vault batch-encrypt ./configs
 `);
 }

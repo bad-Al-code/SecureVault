@@ -27,7 +27,9 @@ export async function findFiles(
       const fullPath = path.join(currentDir, entry.name);
 
       if (entry.isDirectory() && recursive) {
-        await processDirectory(fullPath);
+        if (!excludePattern.test(entry.name)) {
+          await processDirectory(fullPath);
+        }
       } else if (entry.isFile()) {
         if (filePattern.test(entry.name) && !excludePattern.test(entry.name)) {
           foundFiles.push(fullPath);

@@ -11,6 +11,7 @@ import {
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
+import { SearchCommand } from './commands/search.command';
 import { ICommand } from './core';
 
 async function main() {
@@ -22,6 +23,7 @@ async function main() {
     ['history', new HistoryCommand()],
     ['restore', new RestoreCommand()],
     ['compare', new CompareCommand()],
+    ['search', new SearchCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);
