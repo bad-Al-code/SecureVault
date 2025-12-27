@@ -85,4 +85,30 @@ export class FileService {
       return false;
     }
   }
+
+  /**
+   * Reads the first N bytes of a file as a UTF-8 string.
+   * Efficient for header checking without loading the entire file.
+   * @param filePath - The path to the file.
+   * @param length - Number of bytes to read from the start of the file.
+   * @returns The first N bytes of the file as a string.
+   */
+  public static async readFirstBytes(
+    filePath: string,
+    length: number
+  ): Promise<string> {
+    let handle: fs.FileHandle | null = null;
+
+    try {
+      handle = await fs.open(filePath, 'r');
+      const buffer = Buffer.alloc(length);
+      const result = await handle.read(buffer, 0, length, 0);
+
+      return buffer.toString('utf-8', 0, result.bytesRead);
+    } finally {
+      if (handle) {
+        await handle.close();
+      }
+    }
+  }
 }

@@ -1,7 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
-import { CryptoService, FileService, S3Service } from '../../services';
+import {
+  CryptoService,
+  FileService,
+  S3Service,
+  SyncStateService,
+} from '../../services';
 import { ICommand } from '../../types';
 import { ConsoleFormatter, findFiles, LoadingIndicator } from '../../utils';
 
@@ -24,15 +29,33 @@ export class SyncPushCommand implements ICommand {
       });
 
       this.loadingIndicator.stop();
+      console.log(
+        ConsoleFormatter.cyan(
+          `Found ${localFiles.length} local files. Checking status...`
+        )
+      );
+      this.loadingIndicator.start('Syncing...');
 
       let uploadCount = 0;
       let skippedCount = 0;
+      let conflictCount = 0;
 
       for (const filePath of localFiles) {
-        const content = await FileService.readFile(filePath);
-        if (!CryptoService.isVaultFile(content)) {
+        try {
+          const header = await FileService.readFirstBytes(filePath, 6);
+          if (!CryptoService.isVaultFile(header)) {
+            continue;
+          }
+        } catch (error) {
+          console.warn(
+            ConsoleFormatter.yellow(
+              `Could not read file ${filePath}: ${(error as Error).message}`
+            )
+          );
           continue;
         }
+
+        const content = await FileService.readFile(filePath);
 
         const relativePath = path.relative(process.cwd(), filePath);
         const s3Key = relativePath.split(path.sep).join('/');
@@ -44,19 +67,66 @@ export class SyncPushCommand implements ICommand {
         );
 
         if (shouldUpload) {
+          const relativePath = path.relative(process.cwd(), filePath);
+          const s3Key = relativePath.split(path.sep).join('/');
+          const previousEtag = await SyncStateService.getFileETag(relativePath);
+
           this.loadingIndicator.stop();
           console.log(ConsoleFormatter.green(`⬆  Uploading: ${s3Key}`));
           this.loadingIndicator.start('Syncing...');
 
-          await S3Service.upload(s3Key, content);
-          uploadCount++;
+          try {
+            const newEtag = await S3Service.upload(
+              s3Key,
+              content,
+              previousEtag || undefined
+            );
+
+            await SyncStateService.updateFileState(relativePath, newEtag);
+            uploadCount++;
+          } catch (err) {
+            const error = err as Error;
+            if (error.message.includes('Remote file has changed')) {
+              this.loadingIndicator.stop();
+
+              try {
+                const { content: remoteContent } =
+                  await S3Service.download(s3Key);
+                const conflictFile = `${filePath}.conflicted.${Date.now()}`;
+
+                await FileService.writeFile(conflictFile, remoteContent);
+
+                console.error(
+                  ConsoleFormatter.red(
+                    `✘ CONFLICT: ${s3Key} has changed on remote.`
+                  )
+                );
+                console.error(
+                  ConsoleFormatter.yellow(
+                    `  ➜ Compare them, resolve differences, then try pushing again.`
+                  )
+                );
+              } catch (_downloadError) {
+                console.error(
+                  ConsoleFormatter.red(
+                    `✘ CONFLICT detected, but failed to download remote version.`
+                  )
+                );
+              }
+
+              this.loadingIndicator.start('Syncing...');
+              conflictCount++;
+            } else {
+              throw error;
+            }
+          }
         } else {
           skippedCount++;
         }
       }
 
       this.loadingIndicator.stop();
-      this._printSummary(uploadCount, skippedCount);
+      this._printSummary(uploadCount, skippedCount, conflictCount);
     } catch (err) {
       this.loadingIndicator.stop();
       const error = err as Error;
@@ -91,11 +161,19 @@ export class SyncPushCommand implements ICommand {
    * Prints a summary of the sync operation.
    * @param uploaded - Number of files uploaded.
    * @param skipped - Number of files skipped.
+   * @param conflicts - Number of conflicts encountered.
    */
-  private _printSummary(uploaded: number, skipped: number): void {
+  private _printSummary(
+    uploaded: number,
+    skipped: number,
+    conflicts: number
+  ): void {
     console.log('\n' + ConsoleFormatter.cyan('--- Sync Summary ---'));
-    console.log(`Uploaded: ${uploaded}`);
-    console.log(`Skipped:  ${skipped} (Up to date)`);
+    console.log(`Uploaded:  ${uploaded}`);
+    console.log(`Skipped:   ${skipped}`);
+    if (conflicts > 0) {
+      console.log(ConsoleFormatter.red(`Conflicts: ${conflicts}`));
+    }
     console.log('--------------------');
   }
 }

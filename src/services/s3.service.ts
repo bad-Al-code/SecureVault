@@ -57,7 +57,7 @@ export class S3Service {
     key: string,
     body: string | Buffer,
     previousEtag?: string
-  ): Promise<void> {
+  ): Promise<string> {
     await this.init();
 
     try {
@@ -68,7 +68,9 @@ export class S3Service {
         IfMatch: previousEtag,
       });
 
-      await this.client?.send(command);
+      const response = await this.client?.send(command);
+
+      return response?.ETag?.replace(/"/g, '') || '';
     } catch (error) {
       if ((error as S3ServiceException).name === 'PreconditionFailed') {
         throw new Error(
@@ -76,7 +78,7 @@ export class S3Service {
         );
       }
 
-      this.handleError(error, `Failed to upload object with key: ${key}`);
+      throw this.handleError(error, `Failed to upload object with key: ${key}`);
     }
   }
 

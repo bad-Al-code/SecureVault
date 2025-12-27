@@ -38,12 +38,12 @@ export class EncryptCommand implements ICommand {
         const content = await FileService.readFile(filename);
 
         if (CryptoService.isVaultFile(content)) {
-          console.log(`⚠️  Skipping already encrypted file: ${filename}`);
+          console.log(`Skipping already encrypted file: ${filename}`);
         } else {
           unencryptedFiles.push(filename);
         }
       } else {
-        console.warn(`⚠️  Warning: File not found, skipping: ${filename}`);
+        console.warn(`Warning: File not found, skipping: ${filename}`);
       }
     }
 
