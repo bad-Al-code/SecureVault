@@ -1,34 +1,28 @@
-FROM node:alpine3.20 AS base 
+FROM node:alpine3.20 AS builder
 
-WORKDIR /app 
-
+WORKDIR /app
 COPY package*.json ./
+RUN npm ci
 
-RUN npm ci 
-
-COPY main.ts tsconfig.json ./
+COPY tsconfig.json ./
+COPY src ./src
 
 RUN npm run build
 
-FROM node:alpine3.20 
-
-RUN apk add --no-cache tini 
-
-WORKDIR /vault 
-
-COPY --from=base /app/package*.json ./
-
-RUN npm ci --only=production 
-
 RUN npm install -g pkg
 
-COPY --from=base /app/main.js ./
+RUN pkg . --targets node18-linux-x64 --output vault-bin
 
-RUN pkg . --targets node18-linux-x64 --output /vault/vault
+FROM node:alpine3.20
+
+RUN apk add --no-cache tini gcompat libstdc++
+
+WORKDIR /vault
+
+COPY --from=builder /app/vault-bin ./vault
 
 RUN addgroup -S vaultgroup && adduser -S vaultuser -G vaultgroup
-
-RUN chown -R vaultuser:vaultgroup /vault 
+RUN chown -R vaultuser:vaultgroup /vault
 
 USER vaultuser
 
