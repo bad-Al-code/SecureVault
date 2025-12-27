@@ -113,3 +113,35 @@ export interface ICloudStorageProvider {
    */
   listFiles(): Promise<CloudFileMetadata[]>;
 }
+
+export type VaultActionType =
+  | 'view'
+  | 'edit'
+  | 'decrypt'
+  | 'encrypt'
+  | 'restore';
+
+export interface FileUsageStats {
+  accessCount: number;
+  lastAccessed: string;
+  firstTracked: string;
+  actions: {
+    [key in VaultActionType]?: number;
+  };
+}
+
+export interface AnalyticsData {
+  [filepath: string]: FileUsageStats;
+}
+
+export interface VaultHealthReport {
+  totalFiles: number;
+  totalSizeBytes: number;
+  historySizeBytes: number;
+  mostAccessedFiles: Array<{ name: string; count: number }>;
+  warnings: Array<{
+    file: string;
+    message: string;
+    severity: 'CRITICAL' | 'WARNING';
+  }>;
+}

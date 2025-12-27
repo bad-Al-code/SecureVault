@@ -14,6 +14,7 @@ Commands:
   config [key] [value]                  Get or Set configuration values
   push                                  Upload encrypted files to S3 (Backup)
   pull                                  Download encrypted files from S3
+  analytics                             Show vault health and usage statistics
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import {
+  AnalyticsCommand,
   CompareCommand,
   ConfigCommand,
   DecryptCommand,
@@ -15,9 +16,12 @@ import {
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
+import { AnalyticsListener } from './services';
 import { ICommand } from './types';
 
 async function main() {
+  AnalyticsListener.init();
+
   const commands = new Map<string, ICommand>([
     ['encrypt', new EncryptCommand()],
     ['decrypt', new DecryptCommand()],
@@ -30,6 +34,7 @@ async function main() {
     ['config', new ConfigCommand()],
     ['push', new SyncPushCommand()],
     ['pull', new SyncPullCommand()],
+    ['analytics', new AnalyticsCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

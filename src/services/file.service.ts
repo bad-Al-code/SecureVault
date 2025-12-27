@@ -1,5 +1,6 @@
 import { constants, Dirent } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import path from 'node:path';
 
 export class FileService {
   /**
@@ -109,6 +110,59 @@ export class FileService {
       if (handle) {
         await handle.close();
       }
+    }
+  }
+
+  /**
+   * Gets the size ofa file in bytes.
+   * @param filePath
+   * @returns
+   */
+  public static async getFileSize(filePath: string): Promise<number> {
+    const stats = await this._getFileStats(filePath);
+
+    return stats?.size ?? 0;
+  }
+
+  /**
+   * Gets the total size of a directory in bytes (recursive).
+   * @param dirPath
+   * @returns
+   */
+  public static async getDirectorySize(dirPath: string): Promise<number> {
+    let totalSize = 0;
+
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          totalSize += await this.getDirectorySize(fullPath);
+        } else if (entry.isFile()) {
+          const stats = await this._getFileStats(fullPath);
+
+          totalSize += stats?.size ?? 0;
+        }
+      }
+    } catch {
+      return 0;
+    }
+
+    return totalSize;
+  }
+
+  /**
+   * Safely retrieves filesystem stats for a path.
+   * @param filePath
+   * @returns fs.Stats or null if unavailable
+   */
+  private static async _getFileStats(filePath: string) {
+    try {
+      return await fs.stat(filePath);
+    } catch {
+      return null;
     }
   }
 }

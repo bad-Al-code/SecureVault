@@ -1,9 +1,11 @@
 import { spawn } from 'node:child_process';
 import * as path from 'node:path';
 
+import { VaultEvents } from '../core';
 import {
   CryptoService,
   EditorService,
+  EventService,
   FileService,
   VersionControlService,
 } from '../services';
@@ -105,6 +107,11 @@ export class EditCommand implements ICommand {
       filename,
       `Edited ${path.basename(filename)}`
     );
+
+    EventService.getInstance().emit(VaultEvents.ACTION_COMPLETED, {
+      file: filename,
+      action: 'encrypt',
+    });
     ind.stop('✔  File edited and re-encrypted successfully');
   }
 }

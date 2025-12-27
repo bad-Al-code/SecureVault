@@ -1,4 +1,5 @@
-import { CryptoService, FileService } from '../services';
+import { VaultEvents } from '../core';
+import { CryptoService, EventService, FileService } from '../services';
 import { ICommand } from '../types';
 import { getPassword, LoadingIndicator } from '../utils';
 
@@ -35,6 +36,11 @@ export class ViewCommand implements ICommand {
 
       loadingIndicator.stop();
       console.log(decryptedText);
+
+      EventService.getInstance().emit(VaultEvents.ACTION_COMPLETED, {
+        file: filename,
+        action: 'view',
+      });
     } catch (err) {
       const error = err as Error;
 
