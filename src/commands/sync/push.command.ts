@@ -2,16 +2,21 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  CloudStorageFactory,
   CryptoService,
   FileService,
-  S3Service,
   SyncStateService,
 } from '../../services';
-import { ICommand } from '../../types';
+import { ICloudStorageProvider, ICommand } from '../../types';
 import { ConsoleFormatter, findFiles, LoadingIndicator } from '../../utils';
 
 export class SyncPushCommand implements ICommand {
   private readonly loadingIndicator = new LoadingIndicator();
+  private readonly cloudProvder: ICloudStorageProvider;
+
+  constructor() {
+    this.cloudProvder = CloudStorageFactory.getProvider();
+  }
 
   /**
    * Determines if a file should be uploaded based on its existence and hash comparison.
@@ -21,7 +26,7 @@ export class SyncPushCommand implements ICommand {
     this.loadingIndicator.start('Initializing sync...');
 
     try {
-      const remoteFiles = await S3Service.listFiles();
+      const remoteFiles = await this.cloudProvder.listFiles();
       const remoteMap = new Map(remoteFiles.map((file) => [file.key, file]));
 
       const localFiles = await findFiles('.', {
@@ -56,7 +61,6 @@ export class SyncPushCommand implements ICommand {
         }
 
         const content = await FileService.readFile(filePath);
-
         const relativePath = path.relative(process.cwd(), filePath);
         const s3Key = relativePath.split(path.sep).join('/');
 
@@ -67,8 +71,6 @@ export class SyncPushCommand implements ICommand {
         );
 
         if (shouldUpload) {
-          const relativePath = path.relative(process.cwd(), filePath);
-          const s3Key = relativePath.split(path.sep).join('/');
           const previousEtag = await SyncStateService.getFileETag(relativePath);
 
           this.loadingIndicator.stop();
@@ -76,7 +78,7 @@ export class SyncPushCommand implements ICommand {
           this.loadingIndicator.start('Syncing...');
 
           try {
-            const newEtag = await S3Service.upload(
+            const newEtag = await this.cloudProvder.upload(
               s3Key,
               content,
               previousEtag || undefined
@@ -91,7 +93,7 @@ export class SyncPushCommand implements ICommand {
 
               try {
                 const { content: remoteContent } =
-                  await S3Service.download(s3Key);
+                  await this.cloudProvder.download(s3Key);
                 const conflictFile = `${filePath}.conflicted.${Date.now()}`;
 
                 await FileService.writeFile(conflictFile, remoteContent);
@@ -101,9 +103,10 @@ export class SyncPushCommand implements ICommand {
                     `✘ CONFLICT: ${s3Key} has changed on remote.`
                   )
                 );
+
                 console.error(
                   ConsoleFormatter.yellow(
-                    `  ➜ Compare them, resolve differences, then try pushing again.`
+                    `  ➜ Remote version saved to: ${path.basename(conflictFile)}`
                   )
                 );
               } catch (_downloadError) {

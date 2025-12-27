@@ -1,12 +1,21 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { FileService, S3Service, SyncStateService } from '../../services';
-import { ICommand } from '../../types';
+import {
+  CloudStorageFactory,
+  FileService,
+  SyncStateService,
+} from '../../services';
+import { ICloudStorageProvider, ICommand } from '../../types';
 import { ConsoleFormatter, LoadingIndicator } from '../../utils';
 
 export class SyncPullCommand implements ICommand {
   private readonly loadingIndicator = new LoadingIndicator();
+  private readonly cloudProvider: ICloudStorageProvider;
+
+  constructor() {
+    this.cloudProvider = CloudStorageFactory.getProvider();
+  }
 
   /**
    * Executes the sync pull command.
@@ -16,7 +25,7 @@ export class SyncPullCommand implements ICommand {
     this.loadingIndicator.start('Fetching remote file list...');
 
     try {
-      const remoteFiles = await S3Service.listFiles();
+      const remoteFiles = await this.cloudProvider.listFiles();
 
       this.loadingIndicator.stop();
       console.log(
@@ -49,7 +58,9 @@ export class SyncPullCommand implements ICommand {
 
           await FileService.createDirectory(path.dirname(localPath));
 
-          const { content, etag } = await S3Service.download(remoteFile.key);
+          const { content, etag } = await this.cloudProvider.download(
+            remoteFile.key
+          );
           await FileService.writeFile(localPath, content);
 
           const relativePath = path.relative(process.cwd(), localPath);
