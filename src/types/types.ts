@@ -62,3 +62,54 @@ export interface SyncStateEntry {
 export interface SyncState {
   [filename: string]: SyncStateEntry;
 }
+
+export interface CloudFileMetadata {
+  key: string;
+  lastModified: Date;
+  size: number;
+  etag?: string;
+}
+
+export interface S3FileMetadata {
+  key: string;
+  lastModified: Date;
+  size: number;
+}
+
+export interface DownloadResult {
+  content: string;
+  etag: string;
+}
+
+export interface ICloudStorageProvider {
+  /**
+   * The unique name of the cloud storage provider (e.g., 'aws-s3').
+   */
+  name: string;
+
+  /**
+   * Uploads a string or buffer content to the cloud storage.
+   * @param key - The path/key of the file.
+   * @param body - The content of the file (string or Buffer).
+   * @param previousEtag - Optional ETag of the version we expect to overwrite.
+   * @returns The new ETag of the uploaded file.
+   */
+  upload(
+    key: string,
+    body: string | Buffer,
+    previousEtag?: string
+  ): Promise<string>;
+
+  /**
+   * Downloads a file's content and metadata from the cloud storage.
+   * @param key - The path/key of the file.
+   * @returns An object containing the file content as a string and its ETag.
+   */
+  download(key: string): Promise<DownloadResult>;
+
+  /**
+   * Lists all files in the cloud storage bucket/container.
+   * @returns An array of metadata for each file.
+   */
+  listFiles(): Promise<CloudFileMetadata[]>;
+}

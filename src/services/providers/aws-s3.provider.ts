@@ -7,29 +7,34 @@ import {
   S3ServiceException,
 } from '@aws-sdk/client-s3';
 import { Readable } from 'node:stream';
+import {
+  CloudFileMetadata,
+  DownloadResult,
+  ICloudStorageProvider,
+} from '../../types';
+import { ConfigService } from '../config.service';
 
-import { DownloadResult, S3FileMetadata } from '../types';
-import { ConfigService } from './config.service';
-
-export class S3Service {
-  private static client: S3Client | null = null;
-  private static bucket: string | null = null;
+export class AwsS3Provider implements ICloudStorageProvider {
+  public readonly name = 'aws-s3';
+  private client: S3Client | null = null;
+  private bucket: string | null = null;
 
   /**
    * Initializes the S3 client and bucket from ConfigService.
+   * @returns Promise<void>
    */
-  private static async init(): Promise<void> {
+  private async init(): Promise<void> {
     if (this.client && this.bucket) return;
 
     const config = await ConfigService.get();
+
     if (!config.awsRegion || !config.awsBucket) {
       throw new Error(
-        'AWS Region and Bucket not configured. Run "vault config" to set them.'
+        "AWS Region and Bucket not configured. Run 'vault config' to set them."
       );
     }
 
     this.bucket = config.awsBucket;
-
     this.client = new S3Client({
       region: config.awsRegion,
       endpoint: config.awsEndpoint,
@@ -37,13 +42,7 @@ export class S3Service {
     });
   }
 
-  /**
-   * Uploads a string or buffer content to S3.
-   * @param key - The S3 object key.
-   * @param body - The content to upload (string or Buffer).
-   * @param previousEtag - Optional ETag of the version we expect to overwrite.
-   */
-  public static async upload(
+  public async upload(
     key: string,
     body: string | Buffer,
     previousEtag?: string
@@ -64,20 +63,15 @@ export class S3Service {
     } catch (error) {
       if ((error as S3ServiceException).name === 'PreconditionFailed') {
         throw new Error(
-          `Remote file has changed since last sync. Pull the latest changes before uploading.`
+          'Remote file has changed since last sync. Aborting upload to prevent overwriting changes.'
         );
       }
 
-      throw this.handleError(error, `Failed to upload object with key: ${key}`);
+      throw this.handleError(error, `Failed to upload ${key}`);
     }
   }
 
-  /**
-   * Downloads content from S3 as a string.
-   * @param key - The S3 object key.
-   * @returns The file content as a string.
-   */
-  public static async download(key: string): Promise<DownloadResult> {
+  public async download(key: string): Promise<DownloadResult> {
     await this.init();
 
     try {
@@ -88,8 +82,8 @@ export class S3Service {
 
       const response = await this.client?.send(command);
 
-      if (!response || !response.Body) {
-        throw new Error('Empty resource body from S3');
+      if (!response?.Body) {
+        throw new Error('Empty resource body from S3.');
       }
 
       const content = await this.streamToString(response.Body as Readable);
@@ -97,18 +91,11 @@ export class S3Service {
 
       return { content, etag };
     } catch (error) {
-      throw this.handleError(
-        error,
-        `Failed to download object with key: ${key}`
-      );
+      throw this.handleError(error, `Failed to download ${key}`);
     }
   }
 
-  /**
-   * List all objects in the configured S3 bucket.
-   * @returns An array of metadata for objects in the bucket.
-   */
-  public static async listFiles(): Promise<S3FileMetadata[]> {
+  public async listFiles(): Promise<CloudFileMetadata[]> {
     await this.init();
 
     try {
@@ -132,36 +119,31 @@ export class S3Service {
     }
   }
 
-  /**
-   * Helper to convert a Node.js readable stream to a string.
-   * @param stream
-   * @returns
-   */
-  private static streamToString(stream: Readable): Promise<string> {
+  private streamToString(stream: Readable): Promise<string> {
     return new Promise((resolve, reject) => {
       const chunks: Buffer[] = [];
-
       stream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
       stream.on('error', (err) => reject(err));
       stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
     });
   }
+
   /**
-   * Centralized error handling for S3 operations.
-   * @param error - The caught error.
-   * @param context - Contextual message for the error.
-   * @returns A formatted Error object.
+   *
+   * @param error
+   * @param context
+   * @returns
    */
-  private static handleError(error: unknown, context: string): Error {
+  private handleError(error: unknown, context: string): Error {
     const awsError = error as S3ServiceException;
     const message = awsError.message || 'Unknown S3 error';
 
     if (awsError.name === 'CredentialsProviderError') {
       return new Error(
-        'AWS Credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environment variables.'
+        'AWS Credentials not found. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.'
       );
     }
 
-    return new Error(`${context}. ${message}`);
+    return new Error(`${context}: ${message}`);
   }
 }
