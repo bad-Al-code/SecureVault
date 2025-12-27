@@ -6,6 +6,7 @@ export * from './editor.service';
 export * from './event.service';
 export * from './factory';
 export * from './file.service';
+export * from './notification.service';
 export * from './providers';
 export * from './sync-state.service';
 export * from './vault-action.service';

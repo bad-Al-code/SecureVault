@@ -112,7 +112,8 @@ export class SearchCommand implements ICommand {
         const encryptedContent = await FileService.readFile(filename);
         const decryptedContent = await CryptoService.decrypt(
           encryptedContent,
-          password
+          password,
+          filename
         );
 
         const fileMatches = this._findMatchesInText(decryptedContent, query);

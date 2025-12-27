@@ -98,7 +98,8 @@ export class VersionControlService {
 
     const decryptedContent = await CryptoService.decrypt(
       encryptedDate,
-      password
+      password,
+      filename
     );
 
     await FileService.writeFile(filename, decryptedContent);
@@ -158,7 +159,11 @@ export class VersionControlService {
     const versionFile = path.join(historyDir, `${versionId}.enc`);
     const encryptedData = await FileService.readFile(versionFile);
 
-    return CryptoService.decrypt(encryptedData, password);
+    return CryptoService.decrypt(
+      encryptedData,
+      password,
+      `Version ${versionId}`
+    );
   }
 
   /**

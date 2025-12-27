@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import { VaultEvents } from '../../core';
 import {
   CloudStorageFactory,
   CryptoService,
+  EventService,
   FileService,
   SyncStateService,
 } from '../../services';
@@ -131,11 +133,19 @@ export class SyncPushCommand implements ICommand {
 
       this.loadingIndicator.stop();
       this._printSummary(uploadCount, skippedCount, conflictCount);
+
+      EventService.getInstance().emit(VaultEvents.BACKUP_COMPLETED, {
+        count: uploadCount,
+      });
     } catch (err) {
       this.loadingIndicator.stop();
       const error = err as Error;
 
       console.error(ConsoleFormatter.red(`✘ Push failed: ${error.message}`));
+
+      EventService.getInstance().emit(VaultEvents.BACKUP_FAILED, {
+        error: error.message,
+      });
 
       process.exit(1);
     }

@@ -42,7 +42,8 @@ export class EditCommand implements ICommand {
       const decrypted = await this._decryptForEditing(
         encryptedData,
         password,
-        loadingIndicator
+        loadingIndicator,
+        filename
       );
 
       await FileService.writeFile(filename, decrypted);
@@ -66,10 +67,11 @@ export class EditCommand implements ICommand {
   private async _decryptForEditing(
     data: string,
     pass: string,
-    ind: LoadingIndicator
+    ind: LoadingIndicator,
+    filename: string
   ): Promise<string> {
     ind.start('Decrypting...');
-    const decrypted = await CryptoService.decrypt(data, pass);
+    const decrypted = await CryptoService.decrypt(data, pass, filename);
     ind.stop();
     return decrypted;
   }

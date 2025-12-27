@@ -1,6 +1,8 @@
 import * as crypto from 'node:crypto';
 
+import { VaultEvents } from '../core';
 import { VaultFileParts } from '../types';
+import { EventService } from './event.service';
 
 export class CryptoService {
   private static readonly SALT_SIZE = 32;
@@ -58,12 +60,14 @@ export class CryptoService {
    * Decrypts a Vault-formatted string with a password.
    * @param vaultFileContent The complete, packed content from an encrypted file.
    * @param password The password to use for decryption.
+   * @param filename Optional context for event logging.
    * @returns A promise that resolves to the decrypted string payload.
    * @throws Error if vaultFileContent or password is invalid.
    */
   public static async decrypt(
     vaultFileContent: string,
-    password: string
+    password: string,
+    filename: string = 'unknown'
   ): Promise<string> {
     if (typeof vaultFileContent !== 'string' || vaultFileContent.length === 0) {
       throw new Error('Vault file content must be a non-empty string.');
@@ -86,6 +90,10 @@ export class CryptoService {
 
       return decrypted;
     } catch (error) {
+      EventService.getInstance().emit(VaultEvents.AUTH_FAILED, {
+        file: filename,
+      });
+
       if (error instanceof Error) {
         throw new Error(`Decryption failed: ${error.message}`);
       }

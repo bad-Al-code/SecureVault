@@ -31,7 +31,8 @@ export class ViewCommand implements ICommand {
       loadingIndicator.start('Decrypting...');
       const decryptedText = await CryptoService.decrypt(
         encryptedData,
-        password
+        password,
+        filename
       );
 
       loadingIndicator.stop();

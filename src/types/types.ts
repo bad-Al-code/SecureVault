@@ -51,6 +51,7 @@ export interface VaultConfig {
   awsBucket?: string;
   awsRegion?: string;
   awsEndpoint?: string;
+  enableNotifications?: boolean;
   [key: string]: unknown;
 }
 

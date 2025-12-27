@@ -16,11 +16,12 @@ import {
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
-import { AnalyticsListener } from './services';
+import { AnalyticsListener, NotificationService } from './services';
 import { ICommand } from './types';
 
 async function main() {
   AnalyticsListener.init();
+  await NotificationService.init();
 
   const commands = new Map<string, ICommand>([
     ['encrypt', new EncryptCommand()],

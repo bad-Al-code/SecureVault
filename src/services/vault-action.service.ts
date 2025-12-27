@@ -55,7 +55,8 @@ export class VaultActionService {
       const encryptedData = await FileService.readFile(filename);
       const decryptedText = await CryptoService.decrypt(
         encryptedData,
-        password
+        password,
+        filename
       );
 
       await FileService.writeFile(filename, decryptedText);
