@@ -1,45 +1,50 @@
 <div align="center">
   <h1>🛡️ SecureVault CLI 🛡️</h1>
   <p><strong>A modern, command-line tool for encrypting, editing, and versioning your sensitive files.</strong></p>
-  <p>Think <code>ansible-vault</code> but with built-in, Git-like version history for every individual file.</p>
-  
+  <p>Think <code>ansible-vault</code> but with built-in, Git-like version history, Cloud Sync, and Analytics.</p>
+
   <p>
-    <a href="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml"><img src="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
-    <a href="https://github.com/bad-Al-code/SecureVault/releases/latest"><img src="https://img.shields.io/github/v/release/bad-Al-code/SecureVault" alt="Latest Release"></a>
-    <!-- <a href="https://github.com/bad-Al-code/SecureVault/blob/main/LICENSE"><img src="https://img.shields.io/github/license/bad-Al-code/SecureVault" alt="License"></a> -->
+    <a href="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml">
+      <img src="https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml/badge.svg" alt="CI Status">
+    </a>
+    <a href="https://github.com/bad-Al-code/SecureVault/releases/latest">
+      <img src="https://img.shields.io/github/v/release/bad-Al-code/SecureVault" alt="Latest Release">
+    </a>
   </p>
 </div>
 
-<!-- TODO: Add a GIF demonstrating the 'edit', 'history', and 'compare' commands in action. -->
+<!-- TODO: Add a GIF demonstrating the 'edit', 'history', 'compare', and 'analytics' commands in action. -->
 
 ## Why SecureVault?
 
 Managing secrets and sensitive configuration files can be cumbersome. You often have to choose between unencrypted files in private repos or manually encrypting/decrypting files with tools like GPG before every use. SecureVault streamlines this entire workflow.
 
-- **✍️ Edit on the Fly:** Run `vault edit secrets.yml`, and the file is automatically decrypted into a temporary session, opened in your favorite editor (`$EDITOR`), and seamlessly re-encrypted on save. No more manual `decrypt -> edit -> encrypt` steps.
-- **🕰️ Never Lose a Change:** Every time you encrypt or edit a file, SecureVault automatically creates a version snapshot. Made a mistake? You can instantly view the `history` and `restore` any previous version.
+- **✍️ Edit on the Fly:** Run `vault edit secrets.yml`, and the file is automatically decrypted into a temporary session, opened in your favorite editor (`$EDITOR`), and seamlessly re-encrypted on save.
+- **🕰️ Never Lose a Change:** Every time you encrypt or edit a file, SecureVault automatically creates a version snapshot. View `history`, `restore`, or `compare` versions instantly.
 - **☁️ Cloud Sync & Backup:** Sync your encrypted secrets to AWS S3 (or compatible storage) with built-in conflict resolution and optimistic locking.
-- **🔍 Search Encrypted Files:** Search for strings inside your encrypted files without manually decrypting them first.
-- **🎯 Simple and Secure:** Uses the industry-standard AES-256-CBC algorithm with PBKDF2 for key derivation. It's strong, reliable, and requires no complex setup.
+- **📊 Vault Health Insights:** Track frequently accessed secrets, measure storage overhead, and receive warnings when secrets haven’t been rotated.
+- **🎯 Simple and Secure:** Uses AES-256-CBC with PBKDF2 key derivation. Strong defaults, no complex setup.
 
 ## ✨ Key Features
 
-- 🔒 **Robust Encryption**: AES-256-CBC encryption with a salted PBKDF2 key derivation ensures your data is secure.
-- ✏️ **Seamless Editing**: Automatically decrypts files for editing and re-encrypts on save.
-- 🗂️ **Built-in Version Control**: Every change is saved as a new version. View history, restore, and compare versions of any file.
-- 📂 **Batch Operations**: Encrypt or decrypt entire directory trees with a single command.
-- ☁️ **Cloud Sync**: `push` and `pull` encrypted files to S3. Handles conflicts automatically.
-- 🔍 **Secure Search**: Find text matches within encrypted files instantly.
-- ⚙️ **Cross-Platform**: A single, dependency-free binary for Linux, macOS, and Windows.
-- 🛡️ **Secure by Design**: Password strength is enforced, and secure password prompts hide input.
+- 🔒 **Robust Encryption**: AES-256-CBC with salted PBKDF2 key derivation.
+- ✏️ **Seamless Editing**: Auto-decrypt → edit → re-encrypt workflow.
+- 🗂️ **Built-in Version Control**: View history, restore, and compare versions of any file.
+- 📂 **Batch Operations**: Encrypt or decrypt entire directory trees.
+- ☁️ **Cloud Sync**: Push and pull encrypted files to S3-compatible storage.
+- 🔍 **Secure Search**: Search inside encrypted files instantly.
+- 📊 **Vault Analytics**: Usage statistics, storage bloat detection, and rotation warnings.
+- ⚙️ **Cross-Platform**: Linux, macOS, and Windows support.
+- 🛡️ **Secure by Design**: Password strength enforcement and hidden input prompts.
 
 ## 🚀 Installation
 
 ### Quick Start (Recommended)
 
-Download the pre-compiled binary for your operating system from the [**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest) page.
+Download the pre-compiled binary for your operating system from the  
+[**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest).
 
-Place the binary in a directory included in your system's `PATH` (e.g., `/usr/local/bin` on Linux/macOS or a custom path on Windows).
+Place the binary in a directory included in your system’s `PATH`.
 
 ### Docker
 
@@ -49,20 +54,13 @@ docker run --rm -v $(pwd):/vault secure-vault help
 
 ### From Source (For Developers)
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/bad-Al-code/SecureVault.git
-    cd SecureVault
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Build the project:**
-    ```bash
-    npm run build
-    ```
-    The compiled JavaScript entry point will be located at `./dist/cli.js`. You can run it directly with `node dist/cli.js <command>`.
+```bash
+git clone https://github.com/bad-Al-code/SecureVault.git
+cd SecureVault
+npm install
+npm run build
+# executable at ./dist/cli.js
+```
 
 ## 💻 Usage
 
@@ -71,84 +69,61 @@ docker run --rm -v $(pwd):/vault secure-vault help
 ### Core Operations
 
 ```bash
-# Encrypt a file (or multiple files)
 vault encrypt secrets.txt config.json
-
-# View the decrypted contents of a file
 vault view secrets.txt
-
-# Decrypt a file in-place
 vault decrypt secrets.txt
-
-# Edit an encrypted file securely
 vault edit secrets.txt
-
-# Search inside encrypted files
 vault search "API_KEY" ./projects
+```
 
+### 📊 Monitoring & Analytics
+
+```bash
+vault analytics
 ```
 
 ### Configuration
 
-Set your preferences and cloud credentials.
-
 ```bash
-# Set AWS Bucket for Sync
 vault config awsBucket my-vault-backup
 vault config awsRegion us-east-1
-
-# Optional: Set custom endpoint (e.g., for LocalStack/MinIO)
 vault config awsEndpoint http://localhost:4566
 ```
 
 ### Cloud Sync & Backup
 
-Backup your secrets to S3. The CLI uses standard AWS environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
-
 ```bash
-# Upload changed files to S3
 vault push
-
-# Download changes from S3
 vault pull
 ```
-
-_Note: SecureVault uses optimistic locking. If a conflict is detected (someone else changed the file), it will download the remote version to a `.conflicted` file for you to resolve._
 
 ### Version Control
 
 ```bash
-# Show the version history of a file
 vault history secrets.txt
-
-# Restore a file to a specific version ID
-# (Get the version ID from the 'history' command)
 vault restore secrets.txt <version_id>
-
-# See the differences between two versions
 vault compare secrets.txt <old_version_id> <new_version_id>
 ```
 
 ### Batch Operations
 
 ```bash
-# Recursively find and encrypt all unencrypted files in a directory
-vault batch-encrypt ./my-project/config
-
-# Recursively find and decrypt all encrypted files
-vault batch-decrypt ./my-project/config
+vault batch-encrypt ./configs
+vault batch-decrypt ./configs
 ```
 
 ## 🛠️ How It Works
 
-- **Encryption Method**: AES-256-CBC with a 16-byte Initialization Vector (IV).
-- **Key Derivation**: Your password is never stored. It's combined with a unique 32-byte salt and run through 10,000 iterations of PBKDF2 (SHA-256) to derive a strong 32-byte encryption key.
-- **Version History**: When a file like `secrets.txt` is versioned, a corresponding history is stored in a hidden directory at `.vault_history/secrets.txt/`. This directory contains the encrypted version snapshots and a `version_log.json` metadata file.
-- **Sync**: Tracks ETags in .vault_history/sync_state.json to prevent overwriting remote changes.
+- **Encryption**: AES-256-CBC with a 16-byte IV.
+- **Key Derivation**: PBKDF2 (SHA-256, 10k iterations, salted).
+- **Storage**: Encrypted files contain a `VAULT;` header.
+- **Version History**: Stored locally under `.vault_history/<filename>/`.
+- **Sync**: Tracks ETags in `.vault_history/sync_state.json`.
+- **Analytics**: Usage metadata stored in `.vault_history/analytics.json`.
 
 ## 🤝 Contributing
 
-Contributions are welcome! Whether it's a bug report, a feature request, or a pull request, your input is valued.
+Contributions are welcome and appreciated!
 
-- Please open an [issue](https://github.com/bad-Al-code/SecureVault/issues) to discuss any significant changes before starting work.
-- Our [CI workflow](https://github.com/bad-Al-code/SecureVault/actions/workflows/ci.yml) automatically checks for formatting and linting errors on every pull request. Please run `npm run lint` and `npm run format:check` locally before pushing.
+- Open an issue for bugs or feature requests.
+- Run `npm run lint` and `npm run format:check` before submitting a PR.
