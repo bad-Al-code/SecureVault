@@ -16,6 +16,11 @@ export interface S3FileMetadata {
   size: number;
 }
 
+export interface DownloadResult {
+  content: string;
+  etag: string;
+}
+
 export class S3Service {
   private static client: S3Client | null = null;
   private static bucket: string | null = null;
@@ -34,17 +39,24 @@ export class S3Service {
     }
 
     this.bucket = config.awsBucket;
-    this.client = new S3Client({ region: config.awsRegion });
+
+    this.client = new S3Client({
+      region: config.awsRegion,
+      endpoint: config.awsEndpoint,
+      forcePathStyle: !!config.awsEndpoint,
+    });
   }
 
   /**
-   * ploads a string or buffer content to S3.
+   * Uploads a string or buffer content to S3.
    * @param key - The S3 object key.
    * @param body - The content to upload (string or Buffer).
+   * @param previousEtag - Optional ETag of the version we expect to overwrite.
    */
   public static async upload(
     key: string,
-    body: string | Buffer
+    body: string | Buffer,
+    previousEtag?: string
   ): Promise<void> {
     await this.init();
 
@@ -53,10 +65,17 @@ export class S3Service {
         Bucket: this.bucket!,
         Key: key,
         Body: body,
+        IfMatch: previousEtag,
       });
 
       await this.client?.send(command);
     } catch (error) {
+      if ((error as S3ServiceException).name === 'PreconditionFailed') {
+        throw new Error(
+          `Remote file has changed since last sync. Pull the latest changes before uploading.`
+        );
+      }
+
       this.handleError(error, `Failed to upload object with key: ${key}`);
     }
   }
@@ -66,7 +85,7 @@ export class S3Service {
    * @param key - The S3 object key.
    * @returns The file content as a string.
    */
-  public static async download(key: string): Promise<string> {
+  public static async download(key: string): Promise<DownloadResult> {
     await this.init();
 
     try {
@@ -81,7 +100,10 @@ export class S3Service {
         throw new Error('Empty resource body from S3');
       }
 
-      return this.streamToString(response.Body as Readable);
+      const content = await this.streamToString(response.Body as Readable);
+      const etag = response.ETag?.replace(/"/g, '') || '';
+
+      return { content, etag };
     } catch (error) {
       throw this.handleError(
         error,
@@ -111,6 +133,7 @@ export class S3Service {
           key: c.Key!,
           lastModified: c.LastModified || new Date(0),
           size: c.Size || 0,
+          etag: c.ETag?.replace(/"/g, ''),
         }));
     } catch (error) {
       throw this.handleError(error, 'Failed to list files');

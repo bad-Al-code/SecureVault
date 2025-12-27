@@ -1,0 +1,14 @@
+services:
+  localstack:
+    container_name: vault_localstack
+    image: localstack/localstack:4.12.0
+    ports:
+      - '127.0.0.1:4566:4566'
+      - '127.0.0.1:4510-4559:4510-4559'
+    environment:
+      - SERVICES=s3,iam,sts
+      - DEBUG=1
+      - DATA_DIR=/tmp/localstack/data
+    volumes:
+      - './.localstack:/var/lib/localstack'
+      - '/var/run/docker.sock:/var/run/docker.sock'

@@ -50,6 +50,7 @@ export interface BatchFindOptions {
 export interface VaultConfig {
   awsBucket?: string;
   awsRegion?: string;
+  awsEndpoint?: string;
   [key: string]: unknown;
 }
 

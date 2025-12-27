@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-import { FileService, S3Service } from '../../services';
+import { FileService, S3Service, SyncStateService } from '../../services';
 import { ICommand } from '../../types';
 import { ConsoleFormatter, LoadingIndicator } from '../../utils';
 
@@ -49,8 +49,11 @@ export class SyncPullCommand implements ICommand {
 
           await FileService.createDirectory(path.dirname(localPath));
 
-          const content = await S3Service.download(remoteFile.key);
+          const { content, etag } = await S3Service.download(remoteFile.key);
           await FileService.writeFile(localPath, content);
+
+          const relativePath = path.relative(process.cwd(), localPath);
+          await SyncStateService.updateFileState(relativePath, etag);
 
           downloadedCount++;
         } else {
