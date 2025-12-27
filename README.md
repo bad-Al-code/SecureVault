@@ -18,6 +18,8 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 
 - **✍️ Edit on the Fly:** Run `vault edit secrets.yml`, and the file is automatically decrypted into a temporary session, opened in your favorite editor (`$EDITOR`), and seamlessly re-encrypted on save. No more manual `decrypt -> edit -> encrypt` steps.
 - **🕰️ Never Lose a Change:** Every time you encrypt or edit a file, SecureVault automatically creates a version snapshot. Made a mistake? You can instantly view the `history` and `restore` any previous version.
+- **☁️ Cloud Sync & Backup:** Sync your encrypted secrets to AWS S3 (or compatible storage) with built-in conflict resolution and optimistic locking.
+- **🔍 Search Encrypted Files:** Search for strings inside your encrypted files without manually decrypting them first.
 - **🎯 Simple and Secure:** Uses the industry-standard AES-256-CBC algorithm with PBKDF2 for key derivation. It's strong, reliable, and requires no complex setup.
 
 ## ✨ Key Features
@@ -26,6 +28,8 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 - ✏️ **Seamless Editing**: Automatically decrypts files for editing and re-encrypts on save.
 - 🗂️ **Built-in Version Control**: Every change is saved as a new version. View history, restore, and compare versions of any file.
 - 📂 **Batch Operations**: Encrypt or decrypt entire directory trees with a single command.
+- ☁️ **Cloud Sync**: `push` and `pull` encrypted files to S3. Handles conflicts automatically.
+- 🔍 **Secure Search**: Find text matches within encrypted files instantly.
 - ⚙️ **Cross-Platform**: A single, dependency-free binary for Linux, macOS, and Windows.
 - 🛡️ **Secure by Design**: Password strength is enforced, and secure password prompts hide input.
 
@@ -36,6 +40,12 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 Download the pre-compiled binary for your operating system from the [**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest) page.
 
 Place the binary in a directory included in your system's `PATH` (e.g., `/usr/local/bin` on Linux/macOS or a custom path on Windows).
+
+### Docker
+
+```bash
+docker run --rm -v $(pwd):/vault secure-vault help
+```
 
 ### From Source (For Developers)
 
@@ -72,11 +82,42 @@ vault decrypt secrets.txt
 
 # Edit an encrypted file securely
 vault edit secrets.txt
+
+# Search inside encrypted files
+vault search "API_KEY" ./projects
+
 ```
+
+### Configuration
+
+Set your preferences and cloud credentials.
+
+```bash
+# Set AWS Bucket for Sync
+vault config awsBucket my-vault-backup
+vault config awsRegion us-east-1
+
+# Optional: Set custom endpoint (e.g., for LocalStack/MinIO)
+vault config awsEndpoint http://localhost:4566
+```
+
+### Cloud Sync & Backup
+
+Backup your secrets to S3. The CLI uses standard AWS environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).
+
+```bash
+# Upload changed files to S3
+vault push
+
+# Download changes from S3
+vault pull
+```
+
+_Note: SecureVault uses optimistic locking. If a conflict is detected (someone else changed the file), it will download the remote version to a `.conflicted` file for you to resolve._
 
 ### Version Control
 
-```
+```bash
 # Show the version history of a file
 vault history secrets.txt
 
@@ -90,7 +131,7 @@ vault compare secrets.txt <old_version_id> <new_version_id>
 
 ### Batch Operations
 
-```
+```bash
 # Recursively find and encrypt all unencrypted files in a directory
 vault batch-encrypt ./my-project/config
 
@@ -103,6 +144,7 @@ vault batch-decrypt ./my-project/config
 - **Encryption Method**: AES-256-CBC with a 16-byte Initialization Vector (IV).
 - **Key Derivation**: Your password is never stored. It's combined with a unique 32-byte salt and run through 10,000 iterations of PBKDF2 (SHA-256) to derive a strong 32-byte encryption key.
 - **Version History**: When a file like `secrets.txt` is versioned, a corresponding history is stored in a hidden directory at `.vault_history/secrets.txt/`. This directory contains the encrypted version snapshots and a `version_log.json` metadata file.
+- **Sync**: Tracks ETags in .vault_history/sync_state.json to prevent overwriting remote changes.
 
 ## 🤝 Contributing
 
