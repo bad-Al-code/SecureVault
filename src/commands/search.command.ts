@@ -30,7 +30,8 @@ export class SearchCommand implements ICommand {
       );
 
       const allFiles = await findFiles(directory, {
-        excludePattern: /(\.vault_history|\.git|node_modules|dist|coverage)/,
+        excludePattern:
+          /(\.vault_history|\.git|node_modules|dist|coverage|iac)/,
       });
       const encryptedFiles = await this._filterEncryptedFiles(allFiles);
       const results = await this._searchFiles(encryptedFiles, query, password);

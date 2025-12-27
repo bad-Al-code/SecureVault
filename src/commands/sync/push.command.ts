@@ -30,7 +30,8 @@ export class SyncPushCommand implements ICommand {
       const remoteMap = new Map(remoteFiles.map((file) => [file.key, file]));
 
       const localFiles = await findFiles('.', {
-        excludePattern: /(\.vault_history|\.git|node_modules|dist|coverage)/,
+        excludePattern:
+          /(\.vault_history|\.git|node_modules|dist|coverage|iac)/,
       });
 
       this.loadingIndicator.stop();
