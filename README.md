@@ -36,6 +36,7 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 - 📊 **Vault Analytics**: Usage statistics, storage bloat detection, and rotation warnings.
 - ⚙️ **Cross-Platform**: Linux, macOS, and Windows support.
 - 🛡️ **Secure by Design**: Password strength enforcement and hidden input prompts.
+- 🔔 **Smart Notifications**: Native desktop alerts for unauthorized access attempts and background backup status.
 
 ## 🚀 Installation
 
@@ -88,6 +89,10 @@ vault analytics
 vault config awsBucket my-vault-backup
 vault config awsRegion us-east-1
 vault config awsEndpoint http://localhost:4566
+
+# Enable/Disable Desktop Notifications (Default: true)
+vault config enableNotifications false
+
 ```
 
 ### Cloud Sync & Backup
@@ -120,6 +125,7 @@ vault batch-decrypt ./configs
 - **Version History**: Stored locally under `.vault_history/<filename>/`.
 - **Sync**: Tracks ETags in `.vault_history/sync_state.json`.
 - **Analytics**: Usage metadata stored in `.vault_history/analytics.json`.
+- **Event System**: An internal Event Bus follows the Observer pattern to handle Analytics logging and Desktop Notifications asynchronously.
 
 ## 🤝 Contributing
 

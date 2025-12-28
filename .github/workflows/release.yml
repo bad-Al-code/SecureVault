@@ -23,25 +23,44 @@ jobs:
         run: |
           npm run build
           pkg . --targets node18-linux-x64,node18-macos-x64,node18-win-x64 --output vault
-      - name: Rename executables
+
+      - name: Package Linux
         run: |
-          mv vault-linux vault
-          mv vault-macos vault
-          mv vault-win.exe vault.exe
-      - name: Set executable permissions for Linux/macOS
+          mkdir -p release/linux
+          mv vault-linux release/linux/vault
+          cd release/linux && zip -r ../../vault-linux.zip vault && cd ../..
+
+      - name: Package macOS
         run: |
-          chmod +x vault vault
+          mkdir -p release/macos
+          mv vault-macos release/macos/vault
+          cd release/macos && zip -r ../../vault-macos.zip vault && cd ../..
+
+      - name: Package Windows
+        run: |
+          mkdir -p release/win
+          mv vault-win.exe release/win/vault.exe
+          cd release/win && zip -r ../../vault-win.zip vault.exe && cd ../..
+
       - name: Upload executables to release
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ github.ref_name }}
           artifacts: |
-            vault
-            vault.exe
+            vault-linux.zip
+            vault-macos.zip
+            vault-win.zip
           name: Vault CLI ${{ github.ref_name }}
           body: |
-            This release contains precompiled binaries for the Vault CLI tool:
-            - **Linux**: `vault`
-            - **macOS**: `vault`
-            - **Windows**: `vault.exe`
+            ### SecureVault ${{ github.ref_name }}
+
+            **Installation:**
+            1. Download the zip for your OS.
+            2. Extract it.
+            3. The binary inside is named `vault` (or `vault.exe`).
+
+            **Assets:**
+            - **Linux**: `vault-linux.zip`
+            - **macOS**: `vault-macos.zip`
+            - **Windows**: `vault-win.zip`
