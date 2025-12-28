@@ -7,10 +7,11 @@ import {
   EditorService,
   EventService,
   FileService,
+  PasswordResolverService,
   VersionControlService,
 } from '../services';
 import { ICommand } from '../types';
-import { getPassword, LoadingIndicator } from '../utils';
+import { ConsoleFormatter, LoadingIndicator } from '../utils';
 
 /**
  * Handles the secure editing of an encrypted file.
@@ -38,15 +39,10 @@ export class EditCommand implements ICommand {
       }
       loadingIndicator.stop();
 
-      const password = await getPassword();
-      const decrypted = await this._decryptForEditing(
-        encryptedData,
-        password,
-        loadingIndicator,
-        filename
-      );
+      const { decryptedContent, password } =
+        await PasswordResolverService.resolve(encryptedData, filename);
 
-      await FileService.writeFile(filename, decrypted);
+      await FileService.writeFile(filename, decryptedContent);
 
       await this._launchEditor(filename);
 
@@ -54,7 +50,7 @@ export class EditCommand implements ICommand {
     } catch (err) {
       const error = err as Error;
       loadingIndicator.stop();
-      console.error(`✘ Edit failed: ${error.message}`);
+      console.error(ConsoleFormatter.red(`✘ Edit failed: ${error.message}`));
 
       if (originalContent) {
         await FileService.writeFile(filename, originalContent);
@@ -62,18 +58,6 @@ export class EditCommand implements ICommand {
       }
       process.exit(1);
     }
-  }
-
-  private async _decryptForEditing(
-    data: string,
-    pass: string,
-    ind: LoadingIndicator,
-    filename: string
-  ): Promise<string> {
-    ind.start('Decrypting...');
-    const decrypted = await CryptoService.decrypt(data, pass, filename);
-    ind.stop();
-    return decrypted;
   }
 
   private _launchEditor(filename: string): Promise<void> {

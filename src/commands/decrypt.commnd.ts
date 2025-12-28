@@ -1,6 +1,10 @@
-import { CryptoService, FileService, VaultActionService } from '../services';
+import {
+  CryptoService,
+  FileService,
+  PasswordResolverService,
+} from '../services';
 import { ICommand } from '../types';
-import { getPassword, LoadingIndicator } from '../utils';
+import { ConsoleFormatter, LoadingIndicator } from '../utils';
 
 export class DecryptCommand implements ICommand {
   private readonly loadingIndicator = new LoadingIndicator();
@@ -39,10 +43,18 @@ export class DecryptCommand implements ICommand {
         if (CryptoService.isVaultFile(content)) {
           encryptedFiles.push(filename);
         } else {
-          console.log(`⚠️  Skipping non-encrypted file: ${filename}`);
+          console.log(
+            ConsoleFormatter.yellow(
+              `⚠️  Skipping non-encrypted file: ${filename}`
+            )
+          );
         }
       } else {
-        console.warn(`⚠️  Warning: File not found, skipping: ${filename}`);
+        console.warn(
+          ConsoleFormatter.yellow(
+            `⚠️  Warning: File not found, skipping: ${filename}`
+          )
+        );
       }
     }
 
@@ -55,15 +67,29 @@ export class DecryptCommand implements ICommand {
    */
   private async _processFiles(filesToDecrypt: string[]): Promise<void> {
     try {
-      const password = await getPassword(false);
-
       for (const filename of filesToDecrypt) {
-        await VaultActionService.decryptFile(filename, password);
+        const encryptedData = await FileService.readFile(filename);
+
+        console.log(`Decrypting ${filename}...`);
+
+        const { decryptedContent } = await PasswordResolverService.resolve(
+          encryptedData,
+          filename
+        );
+
+        await FileService.writeFile(filename, decryptedContent);
+
+        console.log(
+          ConsoleFormatter.green(`✔  ${filename} decrypted successfully`)
+        );
       }
-    } catch (_err) {
+    } catch (err) {
       this.loadingIndicator.stop();
 
-      console.error(`✘ A critical error occurred during decryption.`);
+      console.error(
+        ConsoleFormatter.red(`✘ Decryption failed: ${(err as Error).message}`)
+      );
+
       process.exit(1);
     }
   }

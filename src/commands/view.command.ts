@@ -1,7 +1,12 @@
 import { VaultEvents } from '../core';
-import { CryptoService, EventService, FileService } from '../services';
+import {
+  CryptoService,
+  EventService,
+  FileService,
+  PasswordResolverService,
+} from '../services';
 import { ICommand } from '../types';
-import { getPassword, LoadingIndicator } from '../utils';
+import { ConsoleFormatter, LoadingIndicator } from '../utils';
 
 export class ViewCommand implements ICommand {
   /**
@@ -26,17 +31,13 @@ export class ViewCommand implements ICommand {
       }
 
       loadingIndicator.stop();
-      const password = await getPassword();
 
-      loadingIndicator.start('Decrypting...');
-      const decryptedText = await CryptoService.decrypt(
+      const { decryptedContent } = await PasswordResolverService.resolve(
         encryptedData,
-        password,
         filename
       );
 
-      loadingIndicator.stop();
-      console.log(decryptedText);
+      console.log(decryptedContent);
 
       EventService.getInstance().emit(VaultEvents.ACTION_COMPLETED, {
         file: filename,
@@ -46,7 +47,8 @@ export class ViewCommand implements ICommand {
       const error = err as Error;
 
       loadingIndicator.stop();
-      console.error(`✘ View failed: ${error.message}`);
+      console.error(ConsoleFormatter.red(`✘ View failed: ${error.message}`));
+
       process.exit(1);
     }
   }

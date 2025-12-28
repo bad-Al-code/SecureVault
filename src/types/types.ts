@@ -52,6 +52,7 @@ export interface VaultConfig {
   awsRegion?: string;
   awsEndpoint?: string;
   enableNotifications?: boolean;
+  sessionTimeout?: number;
   [key: string]: unknown;
 }
 
@@ -145,4 +146,14 @@ export interface VaultHealthReport {
     message: string;
     severity: 'CRITICAL' | 'WARNING';
   }>;
+}
+
+export interface SessionData {
+  passwords: string[];
+  lastUsed: number;
+}
+
+export interface ResolvedData {
+  password: string;
+  decryptedContent: string;
 }

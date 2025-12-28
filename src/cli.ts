@@ -8,6 +8,7 @@ import {
   EditCommand,
   EncryptCommand,
   HistoryCommand,
+  LogoutCommand,
   RestoreCommand,
   SearchCommand,
   showHelp,
@@ -36,6 +37,7 @@ async function main() {
     ['push', new SyncPushCommand()],
     ['pull', new SyncPullCommand()],
     ['analytics', new AnalyticsCommand()],
+    ['logout', new LogoutCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

@@ -37,6 +37,7 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 - ⚙️ **Cross-Platform**: Linux, macOS, and Windows support.
 - 🛡️ **Secure by Design**: Password strength enforcement and hidden input prompts.
 - 🔔 **Smart Notifications**: Native desktop alerts for unauthorized access attempts and background backup status.
+- ⚡ **Smart Session Caching**: "Sudo-like" behavior. Enter your password once per session (default 5 mins), and it's securely cached in memory for subsequent commands.
 
 ## 🚀 Installation
 
@@ -93,6 +94,9 @@ vault config awsEndpoint http://localhost:4566
 # Enable/Disable Desktop Notifications (Default: true)
 vault config enableNotifications false
 
+# Set Session Timeout (in milliseconds)
+# Example: 10 minutes (600000ms)
+vault config sessionTimeout 600000
 ```
 
 ### Cloud Sync & Backup
@@ -115,6 +119,15 @@ vault compare secrets.txt <old_version_id> <new_version_id>
 ```bash
 vault batch-encrypt ./configs
 vault batch-decrypt ./configs
+```
+
+### Session Management
+
+SecureVault caches your credentials temporarily to speed up your workflow.
+
+```bash
+# Manually clear the session cache (force logout)
+vault logout
 ```
 
 ## 🛠️ How It Works

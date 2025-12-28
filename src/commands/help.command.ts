@@ -15,6 +15,7 @@ Commands:
   push                                  Upload encrypted files to S3 (Backup)
   pull                                  Download encrypted files from S3
   analytics                             Show vault health and usage statistics
+  logout                                Clear cached credentials (sudo-like timeout)
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.

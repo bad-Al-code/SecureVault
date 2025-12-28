@@ -6,6 +6,7 @@ export * from './edit.command';
 export * from './encrypt.command';
 export * from './help.command';
 export * from './history.command';
+export * from './logout.command';
 export * from './restore.command';
 export * from './search.command';
 export * from './sync';
