@@ -6,6 +6,11 @@
   "bin": {
     "vault": "./dist/cli.js"
   },
+  "pkg": {
+    "assets": [
+      "node_modules/node-notifier/vendor/**"
+    ]
+  },
   "scripts": {
     "prepare": "husky",
     "build": "tsc",

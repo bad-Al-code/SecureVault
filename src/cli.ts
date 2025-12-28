@@ -62,11 +62,15 @@ async function main() {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error(`✘ An unexpected error occurred: ${errorMessage}`);
+
+    await NotificationService.ensureSent();
     process.exit(1);
   }
 }
 
-main().catch((error) => {
+main().catch(async (error) => {
   console.error('Unhandled critical error:', error);
+
+  await NotificationService.ensureSent();
   process.exit(1);
 });
