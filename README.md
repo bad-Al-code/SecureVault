@@ -41,12 +41,32 @@ Managing secrets and sensitive configuration files can be cumbersome. You often 
 
 ## 🚀 Installation
 
-### Quick Start (Recommended)
+### Quick Start (Binary)
 
-Download the pre-compiled binary for your operating system from the  
-[**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest).
+1.  **Download** the pre-compiled zip for your OS from the [**Latest Release**](https://github.com/bad-Al-code/SecureVault/releases/latest).
+2.  **Extract** the zip file.
+3.  **Install** by moving the binary to a directory in your system `$PATH`.
 
-Place the binary in a directory included in your system’s `PATH`.
+    **Linux / macOS:**
+
+    ```bash
+    unzip vault-linux.zip
+    sudo mv vault /usr/local/bin/vault
+    sudo chmod +x /usr/local/bin/vault
+    ```
+
+    **Windows:**
+    Move `vault.exe` to a folder in your PATH (e.g., `C:\Windows\System32` or a custom tools folder).
+
+### Shell Completion (Optional)
+
+Once installed in your PATH, you can enable tab-completion for Bash, Zsh, or Fish.
+
+```bash
+vault completion setup
+```
+
+_Follow the on-screen instructions to update your shell profile (e.g., .zshrc)._
 
 ### Docker
 

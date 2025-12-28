@@ -3,6 +3,7 @@
 import {
   AnalyticsCommand,
   CompareCommand,
+  CompletionCommand,
   ConfigCommand,
   DecryptCommand,
   EditCommand,
@@ -17,10 +18,15 @@ import {
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
-import { AnalyticsListener, NotificationService } from './services';
+import {
+  AnalyticsListener,
+  CompletionService,
+  NotificationService,
+} from './services';
 import { ICommand } from './types';
 
 async function main() {
+  CompletionService.init();
   AnalyticsListener.init();
   await NotificationService.init();
 
@@ -38,6 +44,7 @@ async function main() {
     ['pull', new SyncPullCommand()],
     ['analytics', new AnalyticsCommand()],
     ['logout', new LogoutCommand()],
+    ['completion', new CompletionCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
   ]);

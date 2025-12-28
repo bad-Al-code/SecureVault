@@ -1,5 +1,6 @@
 export * from './analytics.command';
 export * from './compare.command';
+export * from './completion.command';
 export * from './config.command';
 export * from './decrypt.commnd';
 export * from './edit.command';

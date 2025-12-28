@@ -16,6 +16,7 @@ Commands:
   pull                                  Download encrypted files from S3
   analytics                             Show vault health and usage statistics
   logout                                Clear cached credentials (sudo-like timeout)
+  completion setup                      Install shell auto-completion hooks
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
