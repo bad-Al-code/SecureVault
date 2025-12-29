@@ -17,6 +17,7 @@ import {
   showHelp,
   SyncPullCommand,
   SyncPushCommand,
+  VersionCommand,
   ViewCommand,
 } from './commands';
 import { BatchDecryptCommand, BatchEncryptCommand } from './commands/batch';
@@ -24,11 +25,15 @@ import {
   AnalyticsListener,
   CompletionService,
   NotificationService,
+  UpdateService,
 } from './services';
 import { ICommand } from './types';
 
 async function main() {
   CompletionService.init();
+
+  const updateCheckPromise = UpdateService.checkForUpdates();
+
   AnalyticsListener.init();
   await NotificationService.init();
 
@@ -48,6 +53,8 @@ async function main() {
     ['logout', new LogoutCommand()],
     ['copy', new CopyCommand()],
     ['paste', new PasteCommand()],
+    ['version', new VersionCommand()],
+    ['v', new VersionCommand()],
     ['completion', new CompletionCommand()],
     ['batch-encrypt', new BatchEncryptCommand()],
     ['batch-decrypt', new BatchDecryptCommand()],
@@ -78,6 +85,15 @@ async function main() {
 
     await NotificationService.ensureSent();
     process.exit(1);
+  } finally {
+    try {
+      const latestVersion = await updateCheckPromise;
+      if (latestVersion) {
+        UpdateService.notify(latestVersion);
+      }
+    } catch {
+      // Ignore
+    }
   }
 }
 

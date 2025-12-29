@@ -13,5 +13,6 @@ export * from './password-resolver.service';
 export * from './providers';
 export * from './session.service';
 export * from './sync-state.service';
+export * from './update.service';
 export * from './vault-action.service';
 export * from './version-control.service';
