@@ -1,5 +1,6 @@
 export * from './analytics-listener.service';
 export * from './analytics.service';
+export * from './clipboard.service';
 export * from './completion.service';
 export * from './config.service';
 export * from './crypto.service';

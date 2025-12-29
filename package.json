@@ -51,6 +51,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.958.0",
+    "clipboardy": "^5.0.2",
     "node-notifier": "^10.0.1",
     "omelette": "^0.4.17",
     "pkg": "^5.8.1",

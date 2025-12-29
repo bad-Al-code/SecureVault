@@ -121,7 +121,9 @@ export type VaultActionType =
   | 'edit'
   | 'decrypt'
   | 'encrypt'
-  | 'restore';
+  | 'restore'
+  | 'copy'
+  | 'paste';
 
 export interface FileUsageStats {
   accessCount: number;

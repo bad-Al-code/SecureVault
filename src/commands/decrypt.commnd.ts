@@ -70,8 +70,6 @@ export class DecryptCommand implements ICommand {
       for (const filename of filesToDecrypt) {
         const encryptedData = await FileService.readFile(filename);
 
-        console.log(`Decrypting ${filename}...`);
-
         const { decryptedContent } = await PasswordResolverService.resolve(
           encryptedData,
           filename

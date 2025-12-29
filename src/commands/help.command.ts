@@ -17,6 +17,8 @@ Commands:
   analytics                             Show vault health and usage statistics
   logout                                Clear cached credentials (sudo-like timeout)
   completion setup                      Install shell auto-completion hooks
+  copy <file>                           Copy decrypted content to clipboard (Auto-clears)
+  paste <file>                          Paste clipboard content into an encrypted file
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
