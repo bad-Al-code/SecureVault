@@ -13,4 +13,5 @@ export * from './paste.command';
 export * from './restore.command';
 export * from './search.command';
 export * from './sync';
+export * from './version.command';
 export * from './view.command';

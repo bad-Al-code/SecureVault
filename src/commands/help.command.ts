@@ -19,6 +19,7 @@ Commands:
   completion setup                      Install shell auto-completion hooks
   copy <file>                           Copy decrypted content to clipboard (Auto-clears)
   paste <file>                          Paste clipboard content into an encrypted file
+  version, v                            Show CLI version information
 
 Batch Commands:
   batch-encrypt <dir>                     Recursively encrypt all files in a directory.
