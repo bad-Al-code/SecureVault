@@ -12,3 +12,26 @@ services:
     volumes:
       - './.localstack:/var/lib/localstack'
       - '/var/run/docker.sock:/var/run/docker.sock'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.50'
+          memory: 2g
+        reservations:
+          cpus: '0.50'
+          memory: 512m
+
+    restart: unless-stopped
+
+    healthcheck:
+      test: ['CMD', 'curl', 'f', 'http://localstack:4566/health']
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '10m'
+        max-file: '3'
