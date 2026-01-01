@@ -1,4 +1,5 @@
 import fs from 'node:fs/promises';
+import https from 'node:https';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -96,24 +97,48 @@ export class UpdateService {
     console.log('');
   }
 
+  /**
+   * Fethes latest version using native HTTPS module to avoid experimental fetch warning in Node 18.
+   * @returns
+   */
   private static async fetchLatestVersion(): Promise<string | null> {
-    try {
-      const response = await fetch(this.GITHUB_API, {
+    return new Promise((resolve) => {
+      const options = {
         headers: {
           'User-Agent': 'SecureVault-CLI',
         },
+        timeout: 2000, // 2s
+      };
 
-        signal: AbortSignal.timeout(2000),
+      const req = https.get(this.GITHUB_API, options, (res) => {
+        if (res.statusCode !== 200) {
+          res.resume();
+
+          resolve(null);
+          return;
+        }
+
+        let data = '';
+        res.setEncoding('utf-8');
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+
+            resolve(json.tag_name || null);
+          } catch {
+            resolve(null);
+          }
+        });
       });
 
-      if (!response.ok) return null;
+      req.on('error', () => resolve(null));
 
-      const data = (await response.json()) as { tag_name: string };
-
-      return data.tag_name;
-    } catch {
-      return null;
-    }
+      req.on('timeout', () => {
+        req.destroy();
+        resolve(null);
+      });
+    });
   }
 
   private static async readState(): Promise<UpdateState | null> {
