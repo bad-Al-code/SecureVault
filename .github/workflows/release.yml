@@ -17,6 +17,13 @@ jobs:
           node-version: 18
       - name: Install dependencies
         run: npm install
+
+      - name: Sync package.json version with Tag
+        run: |
+          VERSION=${GITHUB_REF_NAME#v}
+          console.log("Setting build version to $VERSION")
+          npm version $VERSION --no-git-tag-version
+
       - name: Install pkg
         run: npm install -g pkg
       - name: Build executables
