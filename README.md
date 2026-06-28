@@ -162,7 +162,16 @@ vault logout
 
 ## 🤝 Contributing
 
+[#-contributing](#-contributing)
+
 Contributions are welcome and appreciated!
 
 - Open an issue for bugs or feature requests.
 - Run `npm run lint` and `npm run format:check` before submitting a PR.
+- See [CONTRIBUTING.md](./CONTRIBUTING.md) for full setup and PR guidelines.
+
+## 📄 License
+
+[#-license](#-license)
+
+MIT — see [LICENSE](./LICENSE) for details.
